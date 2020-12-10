@@ -3,13 +3,16 @@
 	.globl	path
 	.section	.rodata
 .LC0:
-	.string	"/etc/passwd"
+	.string	"passwd"
 	.section	.data.rel.local,"aw"
 	.align 8
 	.type	path, @object
 	.size	path, 8
 path:
 	.quad	.LC0
+	.section	.rodata
+.LC1:
+	.string	"Path: %p"
 	.text
 	.globl	main
 	.type	main, @function
@@ -23,17 +26,26 @@ main:
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register 6
 	subq	$16, %rsp
-.L2:
-	movq	path(%rip), %rax
+	movl	$0, -8(%rbp)
+.L3:
 	movl	$0, %esi
-	movq	%rax, %rdi
+	leaq	.LC0(%rip), %rdi
 	movl	$0, %eax
 	call	open@PLT
 	movl	%eax, -4(%rbp)
+	cmpl	$9, -8(%rbp)
+	jg	.L2
+	movq	path(%rip), %rax
+	movq	%rax, %rsi
+	leaq	.LC1(%rip), %rdi
+	movl	$0, %eax
+	call	printf@PLT
+	addl	$1, -8(%rbp)
+.L2:
 	movl	-4(%rbp), %eax
 	movl	%eax, %edi
 	call	close@PLT
-	jmp	.L2
+	jmp	.L3
 	.cfi_endproc
 .LFE6:
 	.size	main, .-main
