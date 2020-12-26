@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-const char* path = "passwd";
+const char* path = "/etc/passwd";
 int main(){
   int fd;
 

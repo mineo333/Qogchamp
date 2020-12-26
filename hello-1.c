@@ -9,7 +9,10 @@
 #include <asm/user.h> //change BASH_PID PLEASE
 #include <linux/mm_types.h>
 #include <linux/uaccess.h>
-#define BASH_PID 6191
+#include <linux/mm.h>
+#include <linux/highmem.h>
+#include <asm/pgtable_types.h>
+#define BASH_PID 7781
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 #define PATH_MAX 4096
 #define EMBEDDED_NAME_MAX	(PATH_MAX - OFFSETOF(struct filename, iname))
@@ -66,35 +69,73 @@ void spam_get_gen(void){
 		printk("syscall_number: %lu\n", data -> orig_ax);
 	}
 }
+struct page* page_walk_safe(unsigned long laddr, struct mm_struct* mm){
+	pgd_t* pgd;
+	p4d_t* p4d;
+	pud_t* pud;
+	pmd_t* pmd;
+	pte_t* pte;
+	struct page* page; //5 level page walk - the wikipedia artcile has a nice diagram
+	pgd = pgd_offset(mm, laddr); //get page global directory from cr3 and offset
+	if(pgd_none(*pgd) || pgd_bad(*pgd)){
+		return NULL;
+	}
+	p4d = p4d_offset(pgd, laddr); //get 4th level page dir
+	if(p4d_none(*p4d) || p4d_bad(*p4d)){
+		return NULL;
+	}
+	pud = pud_offset(p4d, laddr); //get page upper directory
+	if(pud_none(*pud) || pud_bad(*pud)){
+		return NULL;
+	}
+	pmd = pmd_offset(pud, laddr); //get page middle directory
+	if(pmd_none(*pmd) || pmd_bad(*pmd)){
+		return NULL;
+	}
+	pte = pte_offset_map(pmd, laddr); //get page table entry from pmd
+	if(pte == NULL){
+		return NULL;
+	}
+	page = pte_page(*pte); //get associated page struct
+	if(page == NULL){
+		return NULL;
+	}
+	return page;
+
+}
 int init_module(void)
 {
-	struct vm_area_struct *mmap = get_task(BASH_PID) -> mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
-	void* dest = kmalloc(EMBEDDED_NAME_MAX, GFP_KERNEL);
-	void* src;
-	int* intbuf;
-	int copied;
+	struct mm_struct* mm = get_task(BASH_PID) -> mm;
+	struct vm_area_struct *mmap = mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
 	int i;
+	unsigned long laddr;
+	struct page* page;
+	char* paddr;
 	while(1){ //get openat
 		struct user_regs_struct* data = get_gen_regset(BASH_PID);
 		if(data -> orig_ax == 257 || data -> orig_ax == 2){ //the reason openat is used when calling open is because of a race condition
-			src = (void*)(data -> si);
-			copied = __copy_from_user(dest, src, EMBEDDED_NAME_MAX);
-			intbuf = (int*)dest;
-			for(i = 0; i<copied; i++){
-				printk("Buffer %d: %d", i, intbuf[i]);
+				laddr = (unsigned long)(data -> si);
+
+				page = page_walk_safe(laddr, mm);
+				paddr = (char*)kmap(page);
+
+
+
+			for(i = 0; i<PATH_MAX; i++){
+				printk("Phys address: %c", *(paddr+sizeof(char)*i));
 			}
-			//printk("Hopefully the path: %s\n", charbuf);
-			printk("syscall_number: %lu\n", data -> orig_ax);
-			printk("1st arg: %lu\n", data -> di);
-			printk("2nd arg: %lu\n", data -> si);
-			printk("3rd arg: %lu\n", data -> dx);
-			printk("4th arg: %lu\n", data -> r10);
-			printk("5th arg: %lu\n", data -> r8);
+
 			break;
 		}
 
+
+
+
 	}
-	kfree(dest);
+
+
+	kunmap(page);
+	//kfree(dest);
 	while(mmap -> vm_next){
 		printk("<1> start:%lu, end:%lu", mmap -> vm_start, mmap -> vm_end);
 		mmap = mmap -> vm_next; //https://developer.ibm.com/articles/l-kernel-memory-access/ - kernel memory shit
