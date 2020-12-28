@@ -4,14 +4,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-const char* path = "/etc/passwd";
+
 int main(){
   int fd;
-
+  char* path = "POGCHAMP";
   while(1){
-    fd = open("passwd", O_RDONLY);
+    fd = open("/etc/passwd", O_RDONLY);
 
-    //  printf("Path: %p\n", (void*)path);
+      printf("Path: %s\n", path);
 
 
     close(fd);

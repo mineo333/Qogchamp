@@ -12,7 +12,7 @@
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <asm/pgtable_types.h>
-#define BASH_PID 7781
+#define BASH_PID 3444
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 #define PATH_MAX 4096
 #define EMBEDDED_NAME_MAX	(PATH_MAX - OFFSETOF(struct filename, iname))
@@ -103,14 +103,24 @@ struct page* page_walk_safe(unsigned long laddr, struct mm_struct* mm){
 	return page;
 
 }
+/*
+So there's a problem which is basically
+*/
+unsigned long page_offset(unsigned long laddr){
+	return laddr & 0b111111111111;
+}
+void read_string(const char* paddr, char* dest, unsigned long laddr){
+	strncpy(dest,paddr+page_offset((unsigned long)laddr),PATH_MAX);
+}
 int init_module(void)
 {
 	struct mm_struct* mm = get_task(BASH_PID) -> mm;
-	struct vm_area_struct *mmap = mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
-	int i;
+	//struct vm_area_struct *mmap = mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
 	unsigned long laddr;
 	struct page* page;
+	//int i;
 	char* paddr;
+	char* string = kmalloc(PATH_MAX,GFP_KERNEL);
 	while(1){ //get openat
 		struct user_regs_struct* data = get_gen_regset(BASH_PID);
 		if(data -> orig_ax == 257 || data -> orig_ax == 2){ //the reason openat is used when calling open is because of a race condition
@@ -118,12 +128,17 @@ int init_module(void)
 
 				page = page_walk_safe(laddr, mm);
 				paddr = (char*)kmap(page);
+				read_string(paddr,string,laddr);
+
+				printk("%s",string);
+			/*	for(i = 0; i<100; i++){
+					printk("%p:%d:%c",paddr + i*sizeof(char),(int)*(paddr + i*sizeof(char)),*(paddr + i*sizeof(char)));
+
+				}*/
+				//read_string(paddr);
 
 
 
-			for(i = 0; i<PATH_MAX; i++){
-				printk("Phys address: %c", *(paddr+sizeof(char)*i));
-			}
 
 			break;
 		}
@@ -135,11 +150,12 @@ int init_module(void)
 
 
 	kunmap(page);
-	//kfree(dest);
+	kfree(string);
+	/*
 	while(mmap -> vm_next){
 		printk("<1> start:%lu, end:%lu", mmap -> vm_start, mmap -> vm_end);
 		mmap = mmap -> vm_next; //https://developer.ibm.com/articles/l-kernel-memory-access/ - kernel memory shit
-	}
+	}*/
 	return 0;
 }
 
