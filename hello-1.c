@@ -1,4 +1,3 @@
-
 #include <linux/module.h>	/* Needed by all modules */
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
 #include <linux/types.h>
@@ -12,7 +11,7 @@
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <asm/pgtable_types.h>
-#define BASH_PID 3444
+#define BASH_PID 3867
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 #define PATH_MAX 4096
 #define EMBEDDED_NAME_MAX	(PATH_MAX - OFFSETOF(struct filename, iname))
@@ -24,7 +23,6 @@ struct pid* get_pid_struct(pid_t pid){
 struct task_struct* get_task(pid_t pid){
 	return get_pid_task(find_get_pid(pid), PIDTYPE_PID);
 }
-
 struct user_regs_struct* get_gen_regset(pid_t pid){
 	int ret = 0;
 	struct user_regs_struct* data;
@@ -108,49 +106,67 @@ So there's a problem which is basically
 */
 unsigned long page_offset(unsigned long laddr){
 	return laddr & 0b111111111111;
+	//return 4;
 }
-void read_string(const char* paddr, char* dest, unsigned long laddr){
+void read_string(char* paddr, char* dest, unsigned long laddr){
 	strncpy(dest,paddr+page_offset((unsigned long)laddr),PATH_MAX);
+}
+char* return_true_addr(char* paddr, unsigned long laddr){
+	return paddr+page_offset((unsigned long)laddr);
+}
+
+struct user_regs_struct* catch_syscall(unsigned long sys_num){
+	//unsigned long caught_num;
+	while(1){
+		struct user_regs_struct* data = get_gen_regset(BASH_PID);
+		if(data->orig_ax ==sys_num){
+			return data;
+			break;
+		}
+	}
 }
 int init_module(void)
 {
+	int i;
 	struct mm_struct* mm = get_task(BASH_PID) -> mm;
 	//struct vm_area_struct *mmap = mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
 	unsigned long laddr;
 	struct page* page;
-	//int i;
+	char* true_addr;
 	char* paddr;
 	char* string = kmalloc(PATH_MAX,GFP_KERNEL);
-	while(1){ //get openat
-		struct user_regs_struct* data = get_gen_regset(BASH_PID);
-		if(data -> orig_ax == 257 || data -> orig_ax == 2){ //the reason openat is used when calling open is because of a race condition
-				laddr = (unsigned long)(data -> si);
+	struct user_regs_struct* data = catch_syscall(257);
+	laddr = (unsigned long)(data -> si);
+	page = page_walk_safe(laddr, mm);
+	paddr = (char*)kmap(page); //paddr is grossly misnamed its actually the mapped addr.
+	read_string(paddr,string,laddr);
+	printk("string1:%s",string);
 
-				page = page_walk_safe(laddr, mm);
-				paddr = (char*)kmap(page);
-				read_string(paddr,string,laddr);
+	true_addr = return_true_addr(paddr, laddr);
+	*(true_addr)= 'Q';
 
-				printk("%s",string);
-			/*	for(i = 0; i<100; i++){
-					printk("%p:%d:%c",paddr + i*sizeof(char),(int)*(paddr + i*sizeof(char)),*(paddr + i*sizeof(char)));
-
-				}*/
-				//read_string(paddr);
-
-
-
-
-			break;
-		}
-
-
-
+	for(i = 0; i<100; i++){
+		printk("%c",*(true_addr + i*sizeof(char)));
 
 	}
+	/*
+	for(i = 0; i<200; i++){
+		printk("%p:%d:%c",paddr + i*sizeof(char),(int)*(paddr + i*sizeof(char)),*(paddr + i*sizeof(char)));
 
+	}*/
 
+	/*kunmap(page);
+	data = catch_syscall(257);
+	laddr = (unsigned long)(data -> si);
+	page = page_walk_safe(laddr, mm);
+	paddr = (char*)kmap(page);
+	read_string(paddr,string,laddr);
+	printk("string 2:%s",string);*/
 	kunmap(page);
 	kfree(string);
+
+
+
 	/*
 	while(mmap -> vm_next){
 		printk("<1> start:%lu, end:%lu", mmap -> vm_start, mmap -> vm_end);
@@ -164,3 +180,7 @@ void cleanup_module(void)
 	printk("<1> Goodbye world 1.\n");
 }
 MODULE_LICENSE("GPL");
+
+
+
+	//read_string(paddr);

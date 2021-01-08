@@ -7,11 +7,11 @@
 
 int main(){
   int fd;
-  char* path = "POGCHAMP";
+  char* path = "/etc/passwd";
   while(1){
-    fd = open("/etc/passwd", O_RDONLY);
+    fd = open(path, O_RDONLY);
 
-      printf("Path: %s\n", path);
+      printf("%s",path);
 
 
     close(fd);
