@@ -11,7 +11,7 @@
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <asm/pgtable_types.h>
-#define BASH_PID 6641
+#define BASH_PID 2902
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 #define PATH_MAX 4096
 #define EMBEDDED_NAME_MAX	(PATH_MAX - OFFSETOF(struct filename, iname))
@@ -135,7 +135,7 @@ int init_module(void)
 	char* true_addr;
 	char* paddr;
 	char* string = kmalloc(PATH_MAX,GFP_KERNEL);
-	struct user_regs_struct* data = catch_syscall(257);
+	struct user_regs_struct* data = catch_syscall(1);
 	laddr = (unsigned long)(data -> si);
 	page = page_walk_safe(laddr, mm);
 	paddr = (char*)kmap(page); //paddr is grossly misnamed its actually the mapped addr.

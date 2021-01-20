@@ -4,21 +4,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 int main(){
   int fd;
-  char* path = "/dev/null";
-  struct stat* statbuf = malloc(sizeof(struct stat));
+  char* path = "POGCHAMP";
   while(1){
     /*if(*path == 'Q'){
       break;
     }*/
+
     //fd = open(path, O_WRONLY);
-    //printf("%s",path);
-    //write(1,path,11);
+    //write(fd,path,9);
     //close(fd);
-    stat(path, statbuf);
+    write(1,path,8);
 
 
   }
