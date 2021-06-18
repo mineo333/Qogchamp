@@ -6,12 +6,13 @@
 #include <linux/slab.h>
 #include <linux/regset.h>
 #include <asm/user.h> //change BASH_PID PLEASE
-#include <linux/mm_types.h>
+	#include <linux/mm_types.h>
 #include <linux/uaccess.h>
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <asm/pgtable_types.h>
-#define BASH_PID 2902
+#include <linux/page-flags.h>
+#define BASH_PID 2623
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 #define PATH_MAX 4096
 #define EMBEDDED_NAME_MAX	(PATH_MAX - OFFSETOF(struct filename, iname))
@@ -98,6 +99,7 @@ struct page* page_walk_safe(unsigned long laddr, struct mm_struct* mm){
 	if(page == NULL){
 		return NULL;
 	}
+	pte_unmap(pte);
 	return page;
 
 }
@@ -127,57 +129,92 @@ struct user_regs_struct* catch_syscall(unsigned long sys_num){
 }
 int init_module(void)
 {
-	int i;
-	struct mm_struct* mm = get_task(BASH_PID) -> mm;
-	//struct vm_area_struct *mmap = mm -> mmap; //this is a LINKED LIST containing all the mapped memory of the program.
+	//int i;
+	u64 cr0, cr2, cr3;
+	 struct task_struct* ret;
+	struct mm_struct* mm;// = get_task(BASH_PID) -> mm;
+	struct vm_area_struct *mmap; //this is a LINKED LIST containing all the mapped memory of the program.
 	unsigned long laddr;
 	struct page* page;
+	//pgprot_t pgprot;
 	char* true_addr;
 	char* paddr;
-	char* string = kmalloc(PATH_MAX,GFP_KERNEL);
-	struct user_regs_struct* data = catch_syscall(1);
+  char* string;
+  struct user_regs_struct* data;
+
+	ret = get_task(BASH_PID);
+	if(ret == 0){ //do a little error checking
+		printk("Bad PID");
+		return 0;
+	}
+	mm = ret -> mm;
+	string = kmalloc(PATH_MAX,GFP_KERNEL);
+	data = catch_syscall(257);
+  mmap = mm -> mmap;
 	laddr = (unsigned long)(data -> si);
-	page = page_walk_safe(laddr, mm);
-	paddr = (char*)kmap(page); //paddr is grossly misnamed its actually the mapped addr.
+	//printk("linear address of strign: %lu", laddr);
+	printk("Getting the page");
+	page = page_walk_safe(laddr, mm); //get page
+  if(page == NULL){
+    printk("There was a problem getting the page");
+    return 0;
+  }
+	paddr = (char*)kmap(page);
+  printk("%lu\n", page -> index);
 	read_string(paddr,string,laddr);
 	printk("string1:%s",string);
-
 	true_addr = return_true_addr(paddr, laddr);
-	*(true_addr)= 'Q';
-
-	for(i = 0; i<100; i++){
-		printk("%c",*(true_addr + i*sizeof(char)));
-
+	*(true_addr)= 'Q'; // - all of the mapping and qogchamp shit
+	if (page -> flags & (1 << PG_dirty)){
+		printk("Page with Q is dirty\n");
+	}else{
+		printk("The page is not dirty");
 	}
-	/*
-	for(i = 0; i<200; i++){
-		printk("%p:%d:%c",paddr + i*sizeof(char),(int)*(paddr + i*sizeof(char)),*(paddr + i*sizeof(char)));
 
-	}*/
+	if(page -> mapping -> a_ops -> set_page_dirty){
+		printk("Forcing the page to be dirty\n");
+		page -> mapping -> a_ops -> set_page_dirty(page); //we force setthe page as dirty so that kswapd writes it back to the disk
+	}else{
+		printk("Couldn't set the page dirty\n");
+	}
 
-	/*kunmap(page);
-	data = catch_syscall(257);
-	laddr = (unsigned long)(data -> si);
-	page = page_walk_safe(laddr, mm);
-	paddr = (char*)kmap(page);
-	read_string(paddr,string,laddr);
-	printk("string 2:%s",string);*/
+		 //https://developer.ibm.com/articles/l-kernel-memory-access/ - kernel memory shit
+	__asm__ __volatile__ (
+			"mov %%cr0, %%rax\n\t"
+			"mov %%eax, %0\n\t"
+			"mov %%cr2, %%rax\n\t"
+			"mov %%eax, %1\n\t"
+			"mov %%cr3, %%rax\n\t"
+			"mov %%eax, %2\n\t"
+	: "=m" (cr0), "=m" (cr2), "=m" (cr3)
+	: /* no input */
+	: "%rax"
+	);
+	printk("cr0: %llu, cr2: %llu, cr3: %llu", cr0, cr2, cr3);
+
 	kunmap(page);
 	kfree(string);
 
 
 
-	/*
+
 	while(mmap -> vm_next){
-		printk("<1> start:%lu, end:%lu", mmap -> vm_start, mmap -> vm_end);
+		if(mmap -> vm_file){//it is mapped to a file
+			printk("<1> start:%lu, end:%lu, perms: %lu, mapping status: mapped", mmap -> vm_start, mmap -> vm_end, mmap -> vm_flags);
+		} else {
+			printk("<1> start:%lu, end:%lu, perms: %lu, mapping status: not mapped", mmap -> vm_start, mmap -> vm_end, mmap -> vm_flags);
+		}
+
 		mmap = mmap -> vm_next; //https://developer.ibm.com/articles/l-kernel-memory-access/ - kernel memory shit
-	}*/
+	}
+
+
 	return 0;
 }
 
 void cleanup_module(void)
 {
-	printk("<1> Goodbye world 1.\n");
+	printk("<1> Goodbye world\n");
 }
 MODULE_LICENSE("GPL");
 

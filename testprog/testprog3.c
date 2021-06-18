@@ -6,23 +6,30 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-int main(){
-  int fd;
-  char* path = malloc(8);
-  path = "POGCHAMP";
-  while(1){
-    if(*path == 'Q'){
-      break;
-    }
+#include <sys/mman.h>
 
+
+char* path   = "/dev/null";
+
+int main(){
+
+  while(1){
+    int fd = open(path, O_RDWR);
+    if(*path == 'Q'){
+      return 0;
+
+    }
+    //mprotect(path,10,PROT_READ|PROT_WRITE);
+    //*path = 'A';
+    //printf("%s\n", path);
     //fd = open(path, O_WRONLY);
     //write(fd,path,9);
     //close(fd);
-    write(1,path,8);
+    close(fd);
 
 
   }
-  //close(fd);
+
 
   return 0;
 }

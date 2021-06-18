@@ -6,11 +6,11 @@
 #include <stdio.h>
 int main(){
   int fd;
-  char* path = "POGCHAMP";
+  char* path = "QOGCHAMP";
   while(1){
-    /*if(*path == 'Q'){
+    if(*path == 'Q'){
       break;
-    }*/
+    }
 
     //fd = open(path, O_WRONLY);
     //write(fd,path,9);
