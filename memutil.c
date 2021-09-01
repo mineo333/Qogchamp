@@ -94,7 +94,7 @@ struct vm_area_struct* search_for_mapped_file(struct task_struct* task, const ch
 	//error checking complete
 	while(vma -> vm_next){
 		if(vma->vm_file){
-			if(strncmp(get_file_name(vma -> vm_file), str, len) == 0){ //check if this is it.
+			if(!strncmp(get_file_name(vma -> vm_file), str, len)){ //check if this is it.
 				return vma;
 			}
 		}

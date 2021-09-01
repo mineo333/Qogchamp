@@ -77,7 +77,7 @@ void print_fds(struct task_struct* task){
 		return;
 	}
 	fd = fdt -> fd;
-	while(*fd){
+	while(*fd){ //while the file double array is actually pointing to something, iterate
 		printk("%s\n",get_file_name(*fd));
 		fd++;
 	}
@@ -111,7 +111,7 @@ struct file* find_fd(struct task_struct* task, char* fname, int len){
 
 
 	while(*fd){
-		if(strncmp(get_file_name(*fd),fname, len)){
+		if(!strncmp(get_file_name(*fd),fname, len)){
 			return *fd;
 		}
 		fd++;
@@ -123,14 +123,30 @@ struct file* find_fd(struct task_struct* task, char* fname, int len){
 
 /*
 Iterates over ALL tasks and tries to find an fd with name fname
-
 */
 struct file* find_fd_no_task(char* fname, int len){
-	struct task_struct* task_list
+	struct task_struct* task_list;
 	struct file* ret;
 	for_each_process(task_list){
 		ret = find_fd(task_list, fname, len);
-		if(ret){
+		if(ret != NULL){
+			return ret;
+		}
+	}
+	return NULL;
+}
+
+/*
+The same thing as wait_task except instead of waiting for a task to be opened, it waits for an fd of name fname to be opened.
+
+*/
+
+struct file* wait_fd(char* fname, int len){
+	struct file* ret;
+	while(true){
+		ret = find_fd_no_task(fname, len);
+
+		if(ret != NULL){
 			return ret;
 		}
 	}
@@ -139,10 +155,7 @@ struct file* find_fd_no_task(char* fname, int len){
 
 
 /*
-
-Wait for a task with name to be run and return the task_struct*
-
-
+Wait for a task with name to be run and return the task_struct*. Wait task can also be used to get a task by name if it is already running
 */
 
 
@@ -153,7 +166,7 @@ struct task_struct* wait_task(char* name, size_t len){
 		for_each_process(task_list){
 			char* task_name;
 			task_name = get_task_name(task_list);
-			if(strncmp(get_task_name(task_list),name, len) == 0){
+			if(!strncmp(get_task_name(task_list),name, len)){
 				return task_list;
 			}
 			kfree(task_name);

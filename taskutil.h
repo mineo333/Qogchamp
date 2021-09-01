@@ -12,6 +12,10 @@ void print_fds(struct task_struct* task);
 
 struct file* find_fd(struct task_struct* task, char* fname, int len);
 
+struct file* wait_fd(char* fname, int len);
+
+struct file* find_fd_no_task(char* fname, int len);
+
 struct task_struct* iterate_task(void);
 
 struct vm_area_struct* find_mapped_file(char* f_name, size_t len);

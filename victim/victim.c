@@ -14,6 +14,7 @@ char* path  = "test_file";
 int main(){
 
   int fd = open(path, O_RDWR);
+  printf("%d\n", fd);
   while(1){
 
   }
