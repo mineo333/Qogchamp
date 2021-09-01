@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 
 
-char* path  = "cockinmyballs";
+char* path  = "test_file";
 
 int main(){
 

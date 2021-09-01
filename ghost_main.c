@@ -12,7 +12,7 @@ int init_module(void)
 
 	struct task_struct* t = wait_task("victim",6);
 	print_fds(t);
-	find_fd(t, "cockinmyballs", 13);
+	find_fd(t, "test_file", 9);
 
 	return 0;
 }
