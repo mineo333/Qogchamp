@@ -7,16 +7,11 @@
 
 int init_module(void)
 {
-	//iterate_task();
-	//print_memory_regions(get_task(1));
-	//find_mapped_file("null", 4);
 
-	/*struct task_struct* t = wait_task("test_file",6);
-	print_fds(t);
-	find_fd(t, "test_file", 9);*/
 	struct file* filp = wait_fd("shadow", 6);
 	find_page(filp, 0);
 	printk("%s\n", get_file_name(filp));
+//	wait_task("passwd", 6);
 
 	return 0;
 }

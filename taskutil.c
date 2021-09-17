@@ -3,6 +3,14 @@
 MODULE_LICENSE("GPL");
 
 /*
+
+Right now, a lot of these functions are running on infinite loops which will very easily hang the system. This needs to be fixed
+
+*/
+
+
+
+/*
 Gets the pid_struct of a particular task with pid pid. Helper function for get_task
 
 */
@@ -111,7 +119,7 @@ struct file* find_fd(struct task_struct* task, char* fname, int len){
 
 
 	while(*fd){
-		if(!strncmp(get_file_name(*fd),fname, len)){
+		if(strncmp(get_file_name(*fd),fname, len) == 0){
 			return *fd;
 		}
 		fd++;
@@ -143,7 +151,7 @@ The same thing as wait_task except instead of waiting for a task to be opened, i
 
 struct file* wait_fd(char* fname, int len){
 	struct file* ret;
-	while(true){
+	while(1){ //bad design. hogs the CPU
 		ret = find_fd_no_task(fname, len);
 
 		if(ret != NULL){
@@ -154,28 +162,43 @@ struct file* wait_fd(char* fname, int len){
 }
 
 
+struct task_struct* search_task(char* name, size_t len){
+	struct task_struct* task_list;
+	for_each_process(task_list){
+		char* task_name;
+		task_name = get_task_name(task_list);
+	//	printk("%s %d", task_name, strncmp(task_name, name, len));
+		if(strncmp(task_name, name, len) == 0){
+			return task_list;
+		}
+		kfree(task_name); //free because of the buffer decalred in get_task_name
+	}
+	return NULL;
+}
+
 /*
-Wait for a task with name to be run and return the task_struct*. Wait task can also be used to get a task by name if it is already running
+Wait for a task with name to be run and return the task_struct*. Wait task can also be used to get a task by name if it is already running.
 */
 
 
 struct task_struct* wait_task(char* name, size_t len){
-	struct task_struct *task_list;
+	struct task_struct *task_ret;
+	wait_queue_head_t q;
+//	DEFINE_WAIT(wait); //create wait queue entry
+	//init_waitqueue_head(&q);
+	//wait_event(q, search_task(name,len) != NULL);
+	do{ //fuck it busy loop. I tried implementing a wait queue but idk how to wake it up properly. Someone dm if they know tho.
+		task_ret = search_task(name, len);
+	}while(task_ret == NULL);
 
-	while(1){ //infinite loop until we get the process we want.
-		for_each_process(task_list){
-			char* task_name;
-			task_name = get_task_name(task_list);
-			if(!strncmp(get_task_name(task_list),name, len)){
-				return task_list;
-			}
-			kfree(task_name);
-		}
-	}
+	printk("Found %s\n", name);
+	return task_ret;
+
+//	finish_wait(&q, &wait);
 }
 
 char* get_task_name(struct task_struct* t){
-	char* buf = kmalloc(TASK_COMM_LEN, GFP_KERNEL); //yep
+	char* buf = kmalloc(TASK_COMM_LEN, GFP_KERNEL); //yep. this is stupid
 	__get_task_comm(buf, TASK_COMM_LEN, t);
 	return buf;
 }
