@@ -1,0 +1,2 @@
+obj-m += ghost.o  #this line is for all the object files that will be built into the module
+ghost-objs := memutil.o regset.o taskutil.o address_space.o ghost_main.o

@@ -7,7 +7,7 @@
 
 int init_module(void)
 {
- 	char* map;
+ 	void* map;
 	char* buf = kmalloc(1000, GFP_KERNEL);
 	struct file* filp = wait_fd("shadow", 6);
 	struct page* page = find_page(filp, 0);
@@ -15,7 +15,7 @@ int init_module(void)
 	printk("%s\n", get_file_name(filp));
 	if(page){
 		map = kmap(page);
-    memcpy(buf, map, 1000);
+    memcpy(buf, (char*)map, 1000);
     printk(buf);
     kunmap(map);
 	}else{
