@@ -1,1 +1,0 @@
-cmd_/home/mineo333/Documents/GhostFops/bin/Module.symvers := sed 's/ko$$/o/' /home/mineo333/Documents/GhostFops/bin/modules.order | scripts/mod/modpost -m -a   -o /home/mineo333/Documents/GhostFops/bin/Module.symvers -e -i Module.symvers   -T -
