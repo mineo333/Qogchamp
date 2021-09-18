@@ -17,6 +17,7 @@ int init_module(void)
 		map = kmap(page);
     memcpy(buf, (char*)map, 1000);
     printk(buf);
+    
     kunmap(map);
 	}else{
     printk("It didn't work");
