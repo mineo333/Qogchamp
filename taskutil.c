@@ -56,14 +56,15 @@ struct vm_area_struct* find_mapped_file(char* f_name, size_t len){ //search thro
 		}
 		ret = search_for_mapped_file(task_list, f_name, len);
 		if(ret != NULL){
-			printk("Found it! Pid:%d\n", task_list -> pid);
 			return ret;
 		}
 	}
 	return NULL;
 }
 
-//pretty much just gets the name of a file
+/*
+Gets the name of a file
+*/
 
 char* get_file_name(struct file* file){
 	return file->f_path.dentry->d_iname;
@@ -98,7 +99,6 @@ void print_fds(struct task_struct* task){
 
 /*
 Find an fd with name fname in the task task
-
 */
 
 
@@ -130,44 +130,14 @@ struct file* find_fd(struct task_struct* task, char* fname, int len){
 
 
 /*
-Iterates over ALL tasks and tries to find an fd with name fname
+Iterates through every process on the system and looks for a task with name name
 */
-struct file* find_fd_no_task(char* fname, int len){
-	struct task_struct* task_list;
-	struct file* ret;
-	for_each_process(task_list){
-		ret = find_fd(task_list, fname, len);
-		if(ret != NULL){
-			return ret;
-		}
-	}
-	return NULL;
-}
-
-/*
-The same thing as wait_task except instead of waiting for a task to be opened, it waits for an fd of name fname to be opened.
-
-*/
-
-struct file* wait_fd(char* fname, int len){
-	struct file* ret;
-	while(1){ //bad design. hogs the CPU
-		ret = find_fd_no_task(fname, len);
-
-		if(ret != NULL){
-			return ret;
-		}
-	}
-	return NULL;
-}
-
 
 struct task_struct* search_task(char* name, size_t len){
 	struct task_struct* task_list;
 	for_each_process(task_list){
 		char* task_name;
 		task_name = get_task_name(task_list);
-	//	printk("%s %d", task_name, strncmp(task_name, name, len));
 		if(strncmp(task_name, name, len) == 0){
 			return task_list;
 		}
@@ -180,25 +150,30 @@ struct task_struct* search_task(char* name, size_t len){
 Wait for a task with name to be run and return the task_struct*. Wait task can also be used to get a task by name if it is already running.
 */
 
-
 struct task_struct* wait_task(char* name, size_t len){
 	struct task_struct *task_ret;
-	wait_queue_head_t q;
-//	DEFINE_WAIT(wait); //create wait queue entry
-	//init_waitqueue_head(&q);
-	//wait_event(q, search_task(name,len) != NULL);
 	do{ //fuck it busy loop. I tried implementing a wait queue but idk how to wake it up properly. Someone dm if they know tho.
 		task_ret = search_task(name, len);
 	}while(task_ret == NULL);
 
 	printk("Found %s\n", name);
 	return task_ret;
-
-//	finish_wait(&q, &wait);
 }
 
 char* get_task_name(struct task_struct* t){
 	char* buf = kmalloc(TASK_COMM_LEN, GFP_KERNEL); //yep. this is stupid
 	__get_task_comm(buf, TASK_COMM_LEN, t);
 	return buf;
+}
+
+/*
+Returns an inode with a given path
+
+*/
+
+struct inode* get_file_path(const char* path_name){
+	struct path path;
+	struct inode* inode;
+	kern_path(path_name, LOOKUP_FOLLOW, &path);
+	return path.dentry->d_inode;
 }

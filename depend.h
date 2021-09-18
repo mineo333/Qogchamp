@@ -21,3 +21,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/fdtable.h>
 #include <linux/xarray.h>
 #include <linux/wait.h>
+#include <linux/namei.h>
