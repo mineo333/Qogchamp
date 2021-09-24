@@ -1,5 +1,2 @@
-bin/*.o
-bin/*.mod
-bin/*.cmd
-bin/*.symvers
+!bin/Kbuild
 *.ko
