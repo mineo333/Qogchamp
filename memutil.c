@@ -42,13 +42,20 @@ struct page* page_walk_safe(unsigned long laddr, struct mm_struct* mm){
 
 }
 
-unsigned long page_offset(unsigned long laddr){ //pretty simply. gets the last 12 bits of a linear address which happens to be the offset into the page frame
+pte_t get_pte(struct page* page){
+	pgprot_t pgp = {.pgprot = 0xFFF};
+	unsigned long pfn = page_to_pfn(page);
+	pte_t pte = pfn_pte(pfn, pgp);
+	return pte;
+}
+
+unsigned long pg_off(unsigned long laddr){ //pretty simply. gets the last 12 bits of a linear address which happens to be the offset into the page frame
 	return laddr & 0xfff;
 }
 
 
 char* return_true_addr(char* kmaddr, unsigned long laddr){ //takes a kmapped pointer kmaddr and uses the offset found in the laddr to get the location of the data at laddr in physical memor
-	return kmaddr+page_offset(laddr);
+	return kmaddr+pg_off(laddr);
 }
 
 void print_memory_regions(struct task_struct* task){

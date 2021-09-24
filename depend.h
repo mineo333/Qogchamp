@@ -15,6 +15,7 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <asm/pgtable_types.h>
+#include <asm/pgtable.h>
 #include <linux/page-flags.h>
 #include <linux/sched/signal.h>
 #include <linux/sched.h>
@@ -22,3 +23,5 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/xarray.h>
 #include <linux/wait.h>
 #include <linux/namei.h>
+#include <linux/writeback.h>
+#include <asm-generic/memory_model.h>

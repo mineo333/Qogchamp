@@ -173,7 +173,6 @@ Returns an inode with a given path
 
 struct inode* get_file_path(const char* path_name){
 	struct path path;
-	struct inode* inode;
 	kern_path(path_name, LOOKUP_FOLLOW, &path);
 	return path.dentry->d_inode;
 }

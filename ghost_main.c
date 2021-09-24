@@ -8,8 +8,7 @@
 int init_module(void)
 {
  	void* map;
-	//char* buf = kmalloc(1000, GFP_KERNEL);
-
+  int ret;
 	struct inode* i = get_file_path("/home/mineo333/Documents/GhostFops/victim/victim");
 	struct page* page = find_page_inode(i, 0);
   if(!page){
@@ -17,14 +16,15 @@ int init_module(void)
     return 0;
   }
   map = kmap(page);
-  *((char*)map) = 'Q';
+  printk("%c", *((char*)map));
   kunmap(map);
-  if(page->flags & PG_dirty){
-    printk("Its Dirty!");
+  if(PageDirty(page)){ //lmao fixed this. I'm stupid
+    printk("Its Dirty!\n");
   }else{
-    printk("Its clean!");
+    printk("Its clean!\n");
   }
-  printk("%ld\n", page -> flags);
+  printk("%lu\n", pte_val(page));
+  ret = force_writeback(i,5);
 
 	return 0;
 }
