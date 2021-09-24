@@ -34,15 +34,19 @@ struct page* find_page_inode(struct inode* i, int bs_off){
 
 
 /*
-Make this use buffers instead of using something on the stack cause thats cringe. 
+Make this use buffers instead of using something on the stack cause thats cringe.
+sizeof(buf) >= size % PAGE_SIZE
+buf is a pointer of pointers - dereferencing (buf + n) will give the nth page in inode i
+
+THIS FUNCTION IS UNTESTED - 09/24
 */
 void get_all_pages_inode(struct inode* i, const loff_t size, struct page** buf){
   int inc;
   struct address_space* mapping = i->i_mapping;
   struct xarray i_pages = mapping -> i_pages;
-  struct page* ret_arr[size%4096]; //declare array of size size
-  for(inc = 0; inc<size%4096; inc++){
-    ret_arr[inc]= xa_load(&i_pages, inc);
+  //struct page* ret_arr[size%4096]; //declare array of size size
+  for(inc = 0; inc<size%4096; inc++, buf++){
+    *buf= xa_load(&i_pages, inc);
 
   }
 }

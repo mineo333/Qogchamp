@@ -1,1 +1,1 @@
-The reason that edited pages aren't written back to the disk is because they aren't in the dirty list for write-back (Linux Kernel Development Page 324)
+This is a simple kernel library that helps do what I call Ghost File Operations (GhostFops for short). It does this by writing to pages in the page cache. For some reason this doesn't dirty pages. IDK why. PLS HELP ME. I'M LITERALLY LOSING MY SANITY. 

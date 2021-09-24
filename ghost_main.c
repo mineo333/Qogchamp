@@ -9,21 +9,22 @@ int init_module(void)
 {
  	void* map;
   int ret;
-	struct inode* i = get_file_path("/home/mineo333/Documents/GhostFops/victim/victim");
+	struct inode* i = get_file_path("/home/mineo333/Documents/GhostFops/victim/test_file");
 	struct page* page = find_page_inode(i, 0);
   if(!page){
     printk("Page failed\n");
     return 0;
   }
   map = kmap(page);
-  printk("%c", *((char*)map));
+  //printk("%c", *((char*)map));
+  *((char*)map) = 'Q';
   kunmap(map);
-  if(PageDirty(page)){ //lmao fixed this. I'm stupid
+  if(PageDirty(page)){
     printk("Its Dirty!\n");
   }else{
     printk("Its clean!\n");
   }
-  printk("%lu\n", pte_val(page));
+  printk("%lu\n", get_pte(page).pte);
   ret = force_writeback(i,5);
 
 	return 0;
