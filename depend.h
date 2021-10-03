@@ -25,3 +25,5 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/namei.h>
 #include <linux/writeback.h>
 #include <asm-generic/memory_model.h>
+#include <linux/pagemap.h>
+#include <vdso/limits.h>

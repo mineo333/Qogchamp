@@ -9,30 +9,37 @@ int init_module(void)
 {
  	void* map;
   int ret;
-	struct inode* i = get_file_path("/home/mineo333/Documents/GhostFops/victim/test_file");
-	struct page* page = find_page_inode(i, 0);
+	struct inode* i = get_file_path("/home/mineo333/ghostfops/victim/test_file");
+	struct page* page = find_page_inode(i,0);
+	//struct page* page = find_get_page(i->i_mapping, 0);//find_page_inode(i, 0); - this is bad code. Use find_get_page instead
   if(!page){
-    printk("Page failed\n");
+    printk(KERN_INFO "Page failed\n");
     return 0;
   }
   map = kmap(page);
-  //printk("%c", *((char*)map));
-  *((char*)map) = 'Q';
+  printk(KERN_INFO "%c", *((char*)map));
+  *((char*)map) = 'A';
   kunmap(map);
+  //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
   if(PageDirty(page)){
-    printk("Its Dirty!\n");
+    printk(KERN_INFO "Its Dirty!\n");
   }else{
-    printk("Its clean!\n");
+    printk(KERN_INFO "Its clean!\n");
+  }
+  if(PagePrivate(page)){
+    printk(KERN_INFO "It has page buffers");
+
+  }else{
+    printk(KERN_INFO "It does not have page buffers");
   }
   printk("%lu\n", get_pte(page).pte);
-  ret = force_writeback(i,5);
+  ret = force_writeback(i); //ensure writeback. Without PG_dirty this should do nothing
 
-	return 0;
+  return 0;
 }
 
 void cleanup_module(void)
 {
 	printk("Module cleanup\n");
-	//go ghost
 }
 MODULE_LICENSE("GPL");
