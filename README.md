@@ -38,4 +38,10 @@ A common concern might be footprint. To my understand, there is very little foot
 
 ## Reverting Changes
 
-In order to revert the changes of this module, either restart which will implicitly dump the page caches (Because the page caches are in RAM which is dumped during restart) OR run echo 3 > /proc/sys/vm/drop_caches as root which explicitly tells the kernel to drop the page cache.
+In order to revert the changes of this module, either restart which will implicitly dump the page caches (Because the page caches are in RAM which is dumped during restart) OR run `echo 3 > /proc/sys/vm/drop_caches` as root which explicitly tells the kernel to drop the page cache.
+
+## Installing
+
+If you want to run this for yourself, just clone the repository and run `make` which will create `ghost.ko` in the directory. The run `sudo insmod ghost.ko` to run the program.
+
+This module has been tested on Ubuntu 20.04 with the 5.11 kernel.
