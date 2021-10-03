@@ -32,6 +32,10 @@ As you might know, when ELFs are loaded into memory they are loaded as memory ma
 
 All because of the design philosphy of the Linux mm subsystem...
 
+## Footprint
 
+A common concern might be footprint. To my understand, there is very little footprint that the code actually creates (Obviously inserting the module will create a footprint but this can be mitigated). Because it is not actually doing any writing, no file metadata is updating - something that the write syscall would do. 
 
+## Reverting Changes
 
+In order to revert the changes of this module, either restart which will implicitly dump the page caches (Because the page caches are in RAM which is dumped during restart) OR run echo 3 > /proc/sys/vm/drop_caches as root which explicitly tells the kernel to drop the page cache.
