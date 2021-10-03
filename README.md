@@ -24,5 +24,14 @@ Because memory mappings are files on the backened, their pages are also held in 
 
 The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. But no. For some reason, the mm subsystem has a helper function which walks the entire page table for a memory mapping, finds each dirty bit, and sets PG_dirty in the corresponding page struct.
 
-Thus, if we don't call that helper function, the modified pages never get written back as they are never marked dirty. Thus, we have something very powerful. With this, we can temporarily write to .text and .data sections of RUNNING programs without the changes ever being written back to disk. 
+Thus, if we don't call that helper function, modified file-mapped pages for a file-mapped region will never be written back to disk. 
+
+Thus we are presented with a great power. 
+
+As you might know, when ELFs are loaded into memory they are loaded as memory mapped files (Look at /proc/[pid]/maps). Typically, writtable sections like .data are marked as copy-on-write meaning that any written pages will be copied into anonymous pages which are not written back to disk. However, static sections like .text and .rodata are not marked as copy-on-write. Thus, data written to them will be written back to disk. Thus, we can semi-permanantly change the execution of programs!
+
+All because of the design philosphy of the Linux mm subsystem...
+
+
+
 
