@@ -46,8 +46,7 @@ A common concern might be footprint. To my understand, there is very little foot
 
 ## Reverting Changes
 
-In order to revert the changes of this module, either restart which will implicitly dump the page caches (Because the page caches are in RAM which is dumped during restart) OR run `echo 3 > /proc/sys/vm/drop_caches` as root which explicitly tells the kernel to drop the page cache.
-
+In order to revert the changes of this module, either restart which will implicitly dump the page caches (Because the page caches are in RAM which is dumped during restart) OR run `revert.sh` as root which will clean the page cache. I would recommend the second option unless you basically dead locked yourself by changing the first letter in /etc/shadow which locks you out of root.
 ## Usage
 
 If you want to run this for yourself, just clone the repository and run `make VICTIM_FILE=[absolute file path]` where `[absolute file path]` is replaced with the absolute file path of the file you want to target. This will create `ghost.ko` in the directory root directory of the project. Run `sudo insmod ghost.ko` to run the program.
