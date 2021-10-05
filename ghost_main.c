@@ -5,8 +5,8 @@
 #include "depend.h"
 #include "address_space.h"
 
-#ifndef TEST_FILE_PATH
-#define TEST_FILE_PATH "/home/mineo333/ghostfops/victim/test_file"
+#ifndef VICTIM_FILE
+#define VICTIM_FILE "/home/mineo333/ghostfops/victim/test_file"
 #endif
 
 #define STRINGIFY(A) #A
@@ -17,7 +17,7 @@ int init_module(void)
  	void* map;
   int ret;
 
-	struct inode* i = get_file_path(TOSTRING(TEST_FILE_PATH));
+	struct inode* i = get_file_path(TOSTRING(VICTIM_FILE));
   if(!i){
     printk(KERN_INFO "Invalid path\n");
     return 0;

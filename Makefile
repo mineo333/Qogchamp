@@ -3,8 +3,8 @@
 obj-m += ghost.o  #this line is for all the object files that will be built into the module
 ghost-objs := memutil.o regset.o taskutil.o ghost_main.o address_space.o
 BUILD_DIR := $(PWD)/bin
-TEST_FILE := /etc/shadow #change this to change file
-KFLAGS := -DTEST_FILE_PATH=$(TEST_FILE)
+VICTIM_FILE := /etc/shadow #change this to change file
+KFLAGS := -DVICTIM_FILE=$(VICTIM_FILE)
 #
 all:
 	make clean
