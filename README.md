@@ -51,4 +51,4 @@ In order to revert the changes of this module, either restart which will implici
 
 If you want to run this for yourself, just clone the repository and run `make VICTIM_FILE=[absolute file path]` where `[absolute file path]` is replaced with the absolute file path of the file you want to target. This will create `ghost.ko` in the directory root directory of the project. Run `sudo insmod ghost.ko` to run the program.
 
-This module has been tested on Ubuntu 20.04 with the 5.11 kernel.
+This module has been tested on Ubuntu 20.04 with the 5.11 kernel as well as the 5.14.0 mainline Linux Kernel.
