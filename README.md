@@ -1,14 +1,22 @@
 # GhostFops
 
-GhostFops is a kernel post expoitation module that exploits the mm subsystem's design philosphy in regards to kernel page cache management.
+GhostFops is a kernel post expoitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosphy.
 
 
 ## Purpose
 GhostFops is just that - Ghost File Operations. The goal is to provide a library for writing to files discreetly with minimal logging. 
 
-Design Philosphy exploited: For some reason, the devs over at the mm subsystem wanted to set the dirty flag on the page struct at their own discretion and essentially ignore the pte dirty flag on memory mappings
-
 There are 2 cases for GhostFops thus far: File Memory Mappings and Inodes
+
+## Design Philsophy Exploited
+
+The Linux Kernel devs within the MM subsystem have a seemingly random and quite redundant system for dirty page writeback. For some reason, the MM designers decided that they wanted to set the dirty bit at their own discretion. 
+
+In the Linux kernel, each page is described by 2 descriptors: the `struct page` and `pte_t`. The `struct page` is the main thing that is used and contains lots of information about page caches, LRU, zones, slab allocation, and more. `pte_t` on the other hand is used by the MMU for page management and fits the page descriptor specification as described in Intel Manual Volume 3. For page management, the Linux kernel mainly uses `struct page` and almost always ignore `pte_t`.
+
+For some reason, both of these structures have their own dirty bits. `struct page` has the PG_dirty flag and `pte_t` has its own dirty bit. To add insult to injury, these flags are not linked. Meaning, although the `pte_t` is set dirty, the Linux Kernel has no clue because it is only paying attention to `struct page`. This is the design philosphy that is exploited. 
+
+Now, the initial reasoning for this might have been in regards to deferred write, but that doesn't even make any sense because writeback only happens when the flusher thread is awakened. 
 
 ## Inodes
 
@@ -18,9 +26,9 @@ With inodes, the pages won't flush out of the page cache unless the page is set 
 
 ## Memory Mappings
 
-The second case is memory mappings. As you might now, in addition to being opened, files can also be mapped into the linear address space of a program using the mmap syscall. Through these mappings, the mapped files can be modified diretly. 
+The second case is memory mappings. As you might now, in addition to being opened, files can also be mapped into the linear address space of a program using the mmap syscall. Through these mappings, the mapped files can be modified discreetly. 
 
-Because memory mappings are files on the backened, their pages are also held in the page cache.
+Because memory mappings are files on the backend, their pages are also held in the page cache.
 
 The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. But no. For some reason, the mm subsystem has a helper function which walks the entire page table for a memory mapping, finds each dirty bit, and sets PG_dirty in the corresponding page struct.
 
