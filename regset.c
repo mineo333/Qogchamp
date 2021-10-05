@@ -5,7 +5,7 @@ MODULE_LICENSE("GPL");
 For some reason, every time get_gen_regset is called it always seems to be within the libc shared object. Why? I have no idea. Someone please answer this question. I'd really like to know the answer.
 
 
-Regset interception is really unpredictable and I really do not recomemnd it. But, it exists if you want. Also I don't know if anything in this library is memory safe. 
+Regset interception is really unpredictable and I really do not recomemnd it. But, it exists if you want. Also I don't know if anything in this library is memory safe.
 
 */
 
@@ -47,7 +47,7 @@ void spam_get_gen(void){ //pretty much a utility function to spam get_general_re
 unsigned long return_ip(void){
   struct user_regs_struct* data = get_gen_regset(BASH_PID);
   unsigned long  ret = data -> ip;
-	printk("ax: %lu\n", data -> orig_ax);
+	printk(KERN_INFO "ax: %lu\n", data -> orig_ax);
   kfree(data);
   return ret;
 }

@@ -36,7 +36,7 @@ struct task_struct* iterate_task(void){
 	struct task_struct *task_list;
 	for_each_process(task_list){
 		char* name = get_task_name(task_list);
-		printk("pid: %d name: %s\n",task_list -> pid, name);
+		printk(KERN_INFO "pid: %d name: %s\n",task_list -> pid, name);
 		kfree(name);
 	}
 	return NULL;
@@ -87,7 +87,7 @@ void print_fds(struct task_struct* task){
 	}
 	fd = fdt -> fd;
 	while(*fd){ //while the file double array is actually pointing to something, iterate
-		printk("%s\n",get_file_name(*fd));
+		printk(KERN_INFO "%s\n",get_file_name(*fd));
 		fd++;
 	}
 
@@ -148,6 +148,8 @@ struct task_struct* search_task(char* name, size_t len){
 
 /*
 Wait for a task with name to be run and return the task_struct*. Wait task can also be used to get a task by name if it is already running.
+
+DON'T FUCKING USE THIS FUNCTION. IT IS AWFUL
 */
 
 struct task_struct* wait_task(char* name, size_t len){
@@ -156,7 +158,7 @@ struct task_struct* wait_task(char* name, size_t len){
 		task_ret = search_task(name, len);
 	}while(task_ret == NULL);
 
-	printk("Found %s\n", name);
+	printk(KERN_INFO "Found %s\n", name);
 	return task_ret;
 }
 

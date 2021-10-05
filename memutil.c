@@ -74,9 +74,9 @@ void print_memory_regions(struct task_struct* task){
 	}
 	while(vma -> vm_next){
 		if(vma -> vm_file){//it is mapped to a file
-			printk("<1> start:%lu, end:%lu, perms: %lu, mapping status: mapped, file name: %s", vma -> vm_start, vma -> vm_end, vma -> vm_flags & VM_EXEC, get_file_name(vma->vm_file));
+			printk(KERN_INFO "start:%lu, end:%lu, perms: %lu, mapping status: mapped, file name: %s", vma -> vm_start, vma -> vm_end, vma -> vm_flags & VM_EXEC, get_file_name(vma->vm_file));
 		} else {
-			printk("<1> start:%lu, end:%lu, perms: %lu, mapping status: not mapped", vma -> vm_start, vma -> vm_end, vma -> vm_flags & VM_EXEC);
+			printk(KERN_INFO "<1> start:%lu, end:%lu, perms: %lu, mapping status: not mapped", vma -> vm_start, vma -> vm_end, vma -> vm_flags & VM_EXEC);
 		}
 
 		vma = vma -> vm_next; //https://developer.ibm.com/articles/l-kernel-memory-access/ - kernel memory shit
