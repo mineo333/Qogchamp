@@ -5,11 +5,23 @@
 #include "depend.h"
 #include "address_space.h"
 
+#ifndef TEST_FILE_PATH
+#define TEST_FILE_PATH "/home/mineo333/ghostfops/victim/test_file"
+#endif
+
+#define STRINGIFY(A) #A
+#define TOSTRING(A) STRINGIFY(A) //I don't why the fuck this works. If I had to take a guess, it is because when you pass in A in TOSTRING, you pass in the value of A which is then stringifyed.
+
 int init_module(void)
 {
  	void* map;
   int ret;
-	struct inode* i = get_file_path("/home/mineo333/ghostfops/victim/test_file");
+
+	struct inode* i = get_file_path(TOSTRING(TEST_FILE_PATH));
+  if(!i){
+    printk(KERN_INFO "Invalid path\n");
+    return 0;
+  }
 	struct page* page = find_page_inode(i,0);
 	//struct page* page = find_get_page(i->i_mapping, 0);//find_page_inode(i, 0); - this is bad code. Use find_get_page instead
   if(!page){

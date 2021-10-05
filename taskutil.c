@@ -174,5 +174,8 @@ Returns an inode with a given path
 struct inode* get_file_path(const char* path_name){
 	struct path path;
 	kern_path(path_name, LOOKUP_FOLLOW, &path);
+	if(!path.dentry || !path.dentry->d_inode){ //either the dentry doesn't exist or the inode doesn't exist
+		return NULL;
+	}
 	return path.dentry->d_inode;
 }
