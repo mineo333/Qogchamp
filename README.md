@@ -10,11 +10,11 @@ There are 2 cases for GhostFops thus far: File Memory Mappings and Inodes
 
 ## Design Philosophy Exploited
 
-The Linux Kernel devs within the MM subsystem have a peculiar system for dirty page writeback within the page cache.
+The Linux Kernel devs within the MM subsystem have a peculiar philosphy for dirty page writeback within the page cache.
 
 In the Linux kernel, each page is described by 2 descriptors: the `struct page` and `pte_t`. The `struct page` is the main thing that is used and contains lots of information about page caches, LRU, zones, slab allocation, and more. `pte_t` on the other hand is used by the MMU for page management and fits the page descriptor specification as described in Intel Manual Volume 3. For page management, the Linux kernel mainly uses `struct page` and almost always ignore `pte_t`.
 
-Both of these structures have their own dirty bits. `struct page` has the PG_dirty flag and `pte_t` has its own dirty bit. Confusingly, these flags are not linked. Meaning, although the `pte_t`'s dirty flag may be set dirty, the `struct page`'s dirty flag is not set. This de-synchronization is the core design philosphy that we attempt to exploit.
+Both of these structures have their own dirty bits. `struct page` has the PG_dirty flag and `pte_t` has its own dirty bit. Confusingly, these flags are not linked. Meaning, although the `pte_t`'s dirty flag may be set dirty, the `struct page`'s dirty flag is not set. This de-synchronization is the core design philosophy that we attempt to exploit.
 
 Now, the initial reasoning for this might have been in regards to deferred write, but that doesn't even make any sense because writeback only happens when the flusher thread is awakened.
 
