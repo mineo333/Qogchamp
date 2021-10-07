@@ -34,7 +34,9 @@ The way memory mappings are handled in the mm subsystem is interesting in regard
 
 This phenomenon is explained here: https://lwn.net/Articles/185463/
 
-Thus we are presented with a great power.
+I should note that this dirty-on-write feature is actually extremely useful. Naturally, each pte can only point to 1 page frame. This is problematic because in the case of shared-mappings pages are intended to contain the same data and metadata (Metadata in the sense that if one pte is dirty then all should be dirty). So, it is easiest to have a master `struct page` from which ptes are created. If we were not to use this one master page, then we would have to walk every instance of the shared mapping in order to figure out if the page is dirty.
+
+With this, we are presented with a great power.
 
 As you might know, when ELFs are loaded into memory they are loaded as memory mapped files (Look at /proc/[pid]/maps). Typically, writable sections like .data are marked as copy-on-write meaning that any written pages will be copied into anonymous pages which are not written back to disk. However, static sections like .text and .rodata are not marked as copy-on-write. Thus, data written to them will be written back to disk. Thus, we can semi-permanently change the execution of programs!
 
