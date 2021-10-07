@@ -22,9 +22,7 @@ struct page* find_page_file(struct file* f, int bs_off){
 /*
 The main advantage of this function is that it does not increment refcount
 
-However, this is a high dangerous function as it could casue a race with the page reclaimer
-
-Thus, it is recommended to utilize find_get_page()
+This is a temporary patch over using find_get_page. find_get_page does something with zoning that prevents dumping the page cache 
 
 */
 struct page* find_page_inode(struct inode* i, int bs_off){

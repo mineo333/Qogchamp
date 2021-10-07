@@ -23,13 +23,16 @@ int init_module(void)
     return 0;
   }
   printk(KERN_INFO "Path Succeeded\n");
+
+
+
   if(i -> i_mapping == NULL){
     printk(KERN_INFO "This page does not have an address_space object\n");
     return 0;
   }
   printk(KERN_INFO "This page has an address_space object\n");
 	//page = find_get_page(i->i_mapping,0); // nah this is fine
-  page = find_page_inode(i, 4096);
+  page = find_page_inode(i, 0); //ok so this actually works
   if(!page){
     printk(KERN_INFO "Page failed\n");
     return 0;
