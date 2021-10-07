@@ -10,7 +10,7 @@ There are 2 cases for GhostFops thus far: File Memory Mappings and Inodes
 
 ## Design Philosophy Exploited
 
-The Linux Kernel devs within the MM subsystem have a peculiar philosphy for dirty page writeback within the page cache.
+The Linux Kernel devs within the MM subsystem have a peculiar philosophy for dirty page writeback within the page cache.
 
 In the Linux kernel, each page is described by 2 descriptors: the `struct page` and `pte_t`. The `struct page` is the main thing that is used and contains lots of information about page caches, LRU, zones, slab allocation, and more. `pte_t` on the other hand is used by the MMU for page management and fits the page descriptor specification as described in Intel Manual Volume 3. For page management, the Linux kernel mainly uses `struct page` and almost always ignore `pte_t`.
 
@@ -30,7 +30,7 @@ The second case is memory mappings. As you might now, in addition to being opene
 
 Because memory mappings are backed by files, their pages are also held in the page cache.
 
-The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. However, instead, they set clean writable pte to read-only. When the page inevitably page faults due to the WP flag, PG_dirty is set dirty. However, we can bypass this entirely because of the fact that cr0 WP is not set in Linux. So, any supervisor/kernel address can access any memory without faulting.
+The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. However, instead, they set clean writable pte to read-only. When the page inevitably page faults due to the read-only flag, PG_dirty is set dirty. So, basically it's kind of like copy-on-write except instead of copying you are setting dirty (dirty-on-write?). However, we can bypass this entirely because of the fact that cr0 WP is not set in Linux. So, any supervisor/kernel address can access any memory without faulting.
 
 This phenomenon is explained here: https://lwn.net/Articles/185463/
 
