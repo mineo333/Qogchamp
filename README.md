@@ -1,6 +1,6 @@
 # GhostFops
 
-GhostFops is a kernel post expoitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosphy.
+GhostFops is a kernel post exploitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosophy.
 
 
 ## Purpose
@@ -8,7 +8,7 @@ GhostFops is just that - Ghost File Operations. The goal is to provide a library
 
 There are 2 cases for GhostFops thus far: File Memory Mappings and Inodes
 
-## Design Philsophy Exploited
+## Design Philosophy Exploited
 
 The Linux Kernel devs within the MM subsystem have a peculiar system for dirty page writeback within the page cache.
 
@@ -22,7 +22,7 @@ Now, the initial reasoning for this might have been in regards to deferred write
 
 The first case is trivial. Inodes are the kernel representation of files on the disk (This is different from a file struct. A file struct is the representation of an open file. They are typically the backend of file descriptors).
 
-With inodes, the pages won't flush out of the page cache unless the page is set dirty. This set is usually done by the write syscall. We can bypass the write syscall by writing directly to the page holding the data within the page cache. This is where the philosphy of the mm subsystem comes in. Even though the pte representing the page in the page cache is dirty (Because we wrote to it), the page struct is not dirty. The only thing that matters in the eye of the kernel is the page struct. Thus, we can put data into the page struct and it won't be written back to disk. Thus ghost file operations.
+With inodes, the pages won't flush out of the page cache unless the page is set dirty. This set is usually done by the write syscall. We can bypass the write syscall by writing directly to the page holding the data within the page cache. This is where the philosophy of the mm subsystem comes in. Even though the pte representing the page in the page cache is dirty (Because we wrote to it), the page struct is not dirty. The only thing that matters in the eye of the kernel is the page struct. Thus, we can put data into the page struct and it won't be written back to disk. Thus ghost file operations.
 
 ## Memory Mappings
 
@@ -30,13 +30,13 @@ The second case is memory mappings. As you might now, in addition to being opene
 
 Because memory mappings are backed by files, their pages are also held in the page cache.
 
-The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. However, instead, they set the write-protect bit on every clean pte. When the page inevitably page faults due to the WP flag, PG_dirty is set dirty. However, we can bypass this entirely because of the fact that cr0 WP is not set in Linux. So, any supervisor/kernel address can access any memory without faulting.
+The way memory mappings are handled in the mm subsystem is interesting in regards to writeback. You might expect the mm subsystem to use the dirty bit of the pte for writeback as it is set by the CPU. However, instead, they set clean writable pte to read-only. When the page inevitably page faults due to the WP flag, PG_dirty is set dirty. However, we can bypass this entirely because of the fact that cr0 WP is not set in Linux. So, any supervisor/kernel address can access any memory without faulting.
 
 This phenomenon is explained here: https://lwn.net/Articles/185463/
 
 Thus we are presented with a great power.
 
-As you might know, when ELFs are loaded into memory they are loaded as memory mapped files (Look at /proc/[pid]/maps). Typically, writtable sections like .data are marked as copy-on-write meaning that any written pages will be copied into anonymous pages which are not written back to disk. However, static sections like .text and .rodata are not marked as copy-on-write. Thus, data written to them will be written back to disk. Thus, we can semi-permanantly change the execution of programs!
+As you might know, when ELFs are loaded into memory they are loaded as memory mapped files (Look at /proc/[pid]/maps). Typically, writable sections like .data are marked as copy-on-write meaning that any written pages will be copied into anonymous pages which are not written back to disk. However, static sections like .text and .rodata are not marked as copy-on-write. Thus, data written to them will be written back to disk. Thus, we can semi-permanently change the execution of programs!
 
 ## Footprint
 
