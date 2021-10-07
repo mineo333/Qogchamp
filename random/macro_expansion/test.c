@@ -4,6 +4,8 @@
 #define HELLOWORLD "Hello World"
 #endif
 
+#define linux 1
+
 int main(){
-  printf("%s\n", HELLOWORLD);
+  printf("%s\n", TEST);
 }
