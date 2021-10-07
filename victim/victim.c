@@ -21,14 +21,3 @@ int main(){
 
   return 0;
 }
-
-/*while(1){ - this code was for when this repo was for syscall interception
-  int fd = open(path, O_RDWR);
-  if(*path == 'Q'){
-    return 0;
-
-  }
-  close(fd);
-
-
-}*/

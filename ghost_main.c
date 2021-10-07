@@ -6,7 +6,7 @@
 #include "address_space.h"
 
 #ifndef VICTIM_FILE
-#define VICTIM_FILE "/home/mineo333/ghostfops/victim/test_file"
+#define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
 
 #define STRINGIFY(A) #A
@@ -16,14 +16,20 @@ int init_module(void)
 {
  	void* map;
   int ret;
-
+  struct page* page;
 	struct inode* i = get_file_path(TOSTRING(VICTIM_FILE));
   if(!i){
     printk(KERN_INFO "Invalid path\n");
     return 0;
   }
-	struct page* page = find_page_inode(i,0);
-	//struct page* page = find_get_page(i->i_mapping, 0);//find_page_inode(i, 0); - this is bad code. Use find_get_page instead
+  printk(KERN_INFO "Path Succeeded\n");
+  if(i -> i_mapping == NULL){
+    printk(KERN_INFO "This page does not have an address_space object\n");
+    return 0;
+  }
+  printk(KERN_INFO "This page has an address_space object\n");
+	//page = find_get_page(i->i_mapping,0); // nah this is fine
+  page = find_page_inode(i, 4096);
   if(!page){
     printk(KERN_INFO "Page failed\n");
     return 0;
@@ -33,6 +39,7 @@ int init_module(void)
   *((char*)map) = 'A';
   kunmap(map);
   //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
+
   if(PageDirty(page)){
     printk(KERN_INFO "Its Dirty!\n");
   }else{
@@ -44,9 +51,11 @@ int init_module(void)
   }else{
     printk(KERN_INFO "It does not have page buffers");
   }
-  printk("%lu\n", get_pte(page).pte);
-  ret = force_writeback(i); //ensure writeback. Without PG_dirty this should do nothing
+  printk(KERN_INFO "%lu\n", page -> flags);
 
+  ClearPageReferenced(page); //make sure to clear page references
+
+  printk(KERN_INFO "%lu\n", page -> flags); //theres some random high bit set
   return 0;
 }
 

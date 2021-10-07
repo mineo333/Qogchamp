@@ -170,7 +170,6 @@ char* get_task_name(struct task_struct* t){
 
 /*
 Returns an inode with a given path
-
 */
 
 struct inode* get_file_path(const char* path_name){
