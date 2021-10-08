@@ -23,7 +23,7 @@ int init_module(void)
   char* ptr;
   struct page* page;
   int count;
-  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
+  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -44,7 +44,7 @@ int init_module(void)
     printk(KERN_INFO "Page failed\n");
     return 0;
   }
-  /*
+
   page = find_page_inode(i, 0);
   if(!page){
     printk(KERN_INFO "Page failed\n");
@@ -54,7 +54,7 @@ int init_module(void)
 
   *((char*)map) = 'A';
   kunmap(page);
-  */
+
 
 
   /*
@@ -62,7 +62,7 @@ int init_module(void)
 
   */
 
-
+  /*
   page = find_page_inode(i, 0x0019d030); //ok so this actually works
   if(!page){
     printk(KERN_INFO "Page failed\n");
@@ -86,7 +86,7 @@ int init_module(void)
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
-
+  */
   //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
 
   if(PageDirty(page)){

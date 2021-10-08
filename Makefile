@@ -3,7 +3,7 @@
 obj-m += ghost.o  #this line is for all the object files that will be built into the module
 ghost-objs := memutil.o regset.o taskutil.o ghost_main.o address_space.o
 BUILD_DIR := $(PWD)/bin
-VICTIM_FILE := /home/mineo333/libc-2.31.so#$(PWD)/victim/test_file # #change this to change file
+VICTIM_FILE := /etc/shadow#$(PWD)/victim/test_file # #change this to change file
 KFLAGS := -DVICTIM_FILE=$(VICTIM_FILE)
 #
 all:
