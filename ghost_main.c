@@ -16,7 +16,7 @@
 char* troll = "trolled";
 
 
-char trolling_opcodes[] = { 0x48, 0xC7, 0xC6, 0x30, 0xD0, 0x19, 0x00, 0x90, 0x90, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00  }; //append with a shit ton of nops
+char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x5C, 0xBE, 0x08, 0x00, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00   }; //append with a shit ton of nops
 int init_module(void)
 {
  	void* map;
@@ -82,7 +82,7 @@ int init_module(void)
   }
   map = kmap(page);
   ptr = (char*)map + pg_off(0x001111d4);
-  for(count = 0; count < 17; count++, ptr++){
+  for(count = 0; count < 15; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
