@@ -22,7 +22,7 @@ struct page* find_page_file(struct file* f, int bs_off){
 /*
 The main advantage of this function is that it does not increment refcount
 
-This is a temporary patch over using find_get_page. find_get_page does something with zoning that prevents dumping the page cache 
+This is a temporary patch over using find_get_page. find_get_page does something with zoning that prevents dumping the page cache
 
 */
 struct page* find_page_inode(struct inode* i, int bs_off){
@@ -40,6 +40,26 @@ struct page* find_page_inode(struct inode* i, int bs_off){
   }
 
   return page_ptr;
+}
+
+/*
+Removes page from a page cache mapping
+*/
+
+struct page* remove_page(struct inode* i, int bs_off){
+  struct page* ret;
+  struct address_space* mapping = i->i_mapping;
+
+  if(!mapping){
+    return NULL;
+  }
+  struct xarray i_pages = mapping -> i_pages;
+  int pg_off = bs_off/4096; //integer division to get offset into pages
+  ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking for us
+  if(!ret){
+    printk(KERN_INFO "Failed to remove\n");
+  }
+  return ret;
 }
 
 

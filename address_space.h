@@ -9,3 +9,5 @@ void edit_page(char* buf, int off, struct page* page);
 int force_writeback(struct inode* inode);
 
 void get_all_pages_inode(struct inode* i, const loff_t size, struct page* buf[]);
+
+struct page* remove_page(struct inode* i, int bs_off);

