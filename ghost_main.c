@@ -25,7 +25,7 @@ int init_module(void)
   char* ptr;
   struct page* page;
   int count;
-  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);///VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//TOSTRING(VICTIM_FILE);
+  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);
 //  printk("path after stringify %d\n", linux); //stupid fucking macro nobody like you you cuck fuck you
 	struct inode* i = get_file_path(path);//
   if(!i){
@@ -90,7 +90,10 @@ int init_module(void)
   */
   page = remove_page(i, 0x001111d4);
 
+  page = find_page_inode(i, 0x001111d4);
+
   if(!page){
+    printk(KERN_INFO "The retrieval failed or no page was initialized\n");
     return 0; //don't continue into flag checking if we haven't initalized a page
   }
 

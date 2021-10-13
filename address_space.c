@@ -55,7 +55,7 @@ struct page* remove_page(struct inode* i, int bs_off){
   }
   struct xarray i_pages = mapping -> i_pages;
   int pg_off = bs_off/4096; //integer division to get offset into pages
-  ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking for us
+  ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking and rcufor us
   if(!ret){
     printk(KERN_INFO "Failed to remove\n");
   }
