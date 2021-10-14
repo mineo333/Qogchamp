@@ -28,3 +28,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/pagemap.h>
 #include <vdso/limits.h>
 #include <linux/gfp.h>
+#include <asm-generic/errno-base.h>

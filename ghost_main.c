@@ -35,7 +35,7 @@ int init_module(void)
   printk(KERN_INFO "Path Succeeded\n");
 
   //new_page_kernel = alloc_page(GFP_KERNEL);
-  //new_page_user = alloc_page(GFP_USER)
+  new_page_user = alloc_page(GFP_USER);
 
   if(i -> i_mapping == NULL){
     printk(KERN_INFO "This page does not have an address_space object - it is likely not part of the page cache\n");
@@ -88,12 +88,16 @@ int init_module(void)
   kunmap(map);
   printk("%lu\n", page->flags);
   */
-  page = remove_page(i, 0x00107c10);
 
-  page = find_page_inode(i, 0x00107c10);
+  find_page_inode(i, 0x00107c10); //initial test to see if it functions. This will output to dmesg
+
+  insert_page(i, 0x00107c10, new_page_user);
+
+  //page = remove_page(i, 0x00107c10);
+
+  //page = find_page_inode(i, 0x00107c10);
 
   if(!page){
-    printk(KERN_INFO "The retrieval failed or no page was initialized\n");
     return 0; //don't continue into flag checking if we haven't initalized a page
   }
 

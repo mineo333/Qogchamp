@@ -1,5 +1,10 @@
 #include "address_space.h"
 
+/*
+TBH this is hardly for address_space anymore and is more of a series of wrapper functions for xarray
+
+*/
+
 
 /*
 Finds a the page containing the data at bs_off.
@@ -25,7 +30,7 @@ The main advantage of this function is that it does not increment refcount
 This is a temporary patch over using find_get_page. find_get_page does something with zoning that prevents dumping the page cache
 
 */
-struct page* find_page_inode(struct inode* i, int bs_off){
+struct page* find_page_inode(struct inode* i, unsigned long bs_off){
   struct address_space* mapping = i->i_mapping;
   if(!mapping){
     return NULL;
@@ -34,9 +39,9 @@ struct page* find_page_inode(struct inode* i, int bs_off){
   int pg_off = bs_off/4096; //integer division to get offset into pages
   struct page* page_ptr = xa_load(&i_pages, pg_off);
   if(!page_ptr){
-    printk(KERN_INFO "It didn't work\n");
+    printk(KERN_INFO "Page retrieval at %lx failed\n", bs_off);
   }else{
-    printk(KERN_INFO "It worked!\n");
+    printk(KERN_INFO "Page retrieval at %lx succeeded\n", bs_off);
   }
 
   return page_ptr;
@@ -46,7 +51,7 @@ struct page* find_page_inode(struct inode* i, int bs_off){
 Removes page from a page cache mapping
 */
 
-struct page* remove_page(struct inode* i, int bs_off){
+struct page* remove_page(struct inode* i, unsigned long bs_off){
   struct page* ret;
   struct address_space* mapping = i->i_mapping;
 
@@ -82,6 +87,27 @@ void get_all_pages_inode(struct inode* i, const loff_t size, struct page** buf){
     *buf= xa_load(&i_pages, inc);
 
   }
+}
+
+
+
+struct page* insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //replace the old page with the new page
+  struct address_space* mapping = i->i_mapping;
+  void* ret;
+  if(!mapping){
+    printk(KERN_INFO "Insertion failed\n");
+    return NULL;
+  }
+  struct xarray i_pages = mapping -> i_pages;
+  int pg_off = bs_off/4096; //integer division to get offset into pages
+  ret = xa_store(&i_pages, pg_off, page, GFP_USER);
+  if(xa_err(ret)){
+    printk(KERN_INFO "Could insert page\n");
+    return NULL;
+  }else{
+    printk(KERN_INFO "Insertion suceeded!\n");
+  }
+  return (struct page*)ret;
 }
 
 
