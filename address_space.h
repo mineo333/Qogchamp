@@ -12,4 +12,6 @@ void get_all_pages_inode(struct inode* i, const loff_t size, struct page* buf[])
 
 struct page* remove_page(struct inode* i, unsigned long bs_off);
 
-struct page* insert_page(struct inode* i, unsigned long bs_off, struct page* page);
+void insert_page(struct inode* i, unsigned long bs_off, struct page* page);
+
+void replace_page(struct page* old, struct page* new);

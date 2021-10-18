@@ -91,23 +91,24 @@ void get_all_pages_inode(struct inode* i, const loff_t size, struct page** buf){
 
 
 
-struct page* insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //replace the old page with the new page
+void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //replace the old page with the new page
   struct address_space* mapping = i->i_mapping;
   void* ret;
+  int error;
   if(!mapping){
     printk(KERN_INFO "Insertion failed\n");
-    return NULL;
+    return;
   }
   struct xarray i_pages = mapping -> i_pages;
   int pg_off = bs_off/4096; //integer division to get offset into pages
-  ret = xa_store(&i_pages, pg_off, page, GFP_USER);
-  if(xa_err(ret)){
-    printk(KERN_INFO "Could insert page\n");
-    return NULL;
-  }else{
-    printk(KERN_INFO "Insertion suceeded!\n");
-  }
-  return (struct page*)ret;
+  error = add_to_page_cache_lru(page, mapping, pg_off, mapping_gfp_constraint(mapping, GFP_KERNEL));
+  printk("%d\n", error);
+
+}
+
+void replace_page(struct page* old, struct page* new){
+  replace_page_cache_page(old,new);
+  lru_cache_add(new);
 }
 
 

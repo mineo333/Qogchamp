@@ -1,5 +1,5 @@
 /*
-This file contains all the system dependcies because I'm lazy and the project looks better this way. Every header file should include this file.
+This file contains all the system dependcies because I'm lazy and the project looks better this way. Every system header file should include this file.
 */
 
 #include <linux/module.h>	/* Needed by all modules */
@@ -29,3 +29,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <vdso/limits.h>
 #include <linux/gfp.h>
 #include <asm-generic/errno-base.h>
+#include <linux/swap.h>
