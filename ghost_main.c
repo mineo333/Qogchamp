@@ -35,10 +35,10 @@ int init_module(void)
   printk(KERN_INFO "Path Succeeded\n");
 
   if(i -> i_mapping == NULL){
-    printk(KERN_INFO "This page does not have an address_space object - it is likely not part of the page cache\n");
+    printk(KERN_INFO "This page does not have an address_space object - it is likely not file-mapped\n");
     return 0;
   }
-  printk(KERN_INFO "This page has an address_space object - it is likely part of the page cache\n");
+  printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
   new_page = alloc_page(GFP_KERNEL);
   old_page = find_page_inode(i, 0x00107c10); //initial test to see if it functions. This will output to dmesg
@@ -47,18 +47,35 @@ int init_module(void)
   }
   new_page_ptr = kmap(new_page);
   old_page_ptr = kmap(old_page);
-  printk("%c\n", *(old_page_ptr+ pg_off(0x00107c10)));
+  printk(KERN_INFO "Character of old page: %c\n", *(old_page_ptr+ pg_off(0x00107c10)));
+  printk(KERN_INFO "page flags of old page: %lu\n", old_page -> flags);
+
+
+
+
   memcpy(new_page_ptr, old_page_ptr, 4096);
-  kunmap((void*)old_page_ptr); //old page is entirely useless
+  //old page is entirely useless
   for(count = 0, ptr = new_page_ptr + pg_off(0x00107c10); count<17; count++, ptr++){
     *ptr = trolling_opcodes[count];
   }
-  printk("%c\n", *(new_page_ptr+ pg_off(0x00107c10)));
-  //get_page(new_page);
-  //insert_page(i, 0x00107c10, new_page); 
-  replace_page(old_page, new_page);
+  //printk("%c\n", *(new_page_ptr+ pg_off(0x00107c10)));
+ 
   kunmap((void*)new_page_ptr);
+  kunmap((void*)old_page_ptr); 
+  //SetPageReferenced(new_page);
+  SetPageMappedToDisk(new_page);
+  SetPageUptodate(new_page);
+  replace_page(old_page, new_page);
+
+
+  //retry getting page
+  old_page = find_page_inode(i, 0x00107c10);
+  old_page_ptr = kmap(old_page);
+  printk(KERN_INFO "Page flags of new page: %lu\n", old_page -> flags);
+  printk(KERN_INFO "Character of new page: %c\n", *(old_page_ptr+ pg_off(0x00107c10)));
+  kunmap((void*)old_page_ptr);
   
+
   if(!old_page){
     return 0; //don't continue into flag checking if we haven't initalized a page
   }
@@ -74,11 +91,9 @@ int init_module(void)
   }else{
     printk(KERN_INFO "It does not have page buffers");
   }
-  printk(KERN_INFO "%lu\n", old_page -> flags);
+  
 
-  ClearPageReferenced(old_page); //make sure to clear page references
-
-  printk(KERN_INFO "%lu\n", old_page -> flags); //theres some random high bit set
+   //prevent writeback
   return 0;
 }
 

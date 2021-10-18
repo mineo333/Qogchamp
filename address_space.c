@@ -39,9 +39,9 @@ struct page* find_page_inode(struct inode* i, unsigned long bs_off){
   int pg_off = bs_off/4096; //integer division to get offset into pages
   struct page* page_ptr = xa_load(&i_pages, pg_off);
   if(!page_ptr){
-    printk(KERN_INFO "Page retrieval at %lx failed\n", bs_off);
+    printk(KERN_INFO "page retrieval at %lx failed\n", bs_off);
   }else{
-    printk(KERN_INFO "Page retrieval at %lx succeeded\n", bs_off);
+    printk(KERN_INFO "page retrieval at %lx succeeded\n", bs_off);
   }
 
   return page_ptr;
@@ -108,7 +108,7 @@ void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //re
 
 void replace_page(struct page* old, struct page* new){
   replace_page_cache_page(old,new);
-  lru_cache_add(new);
+  //lru_cache_add(new);
 }
 
 
