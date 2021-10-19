@@ -1,5 +1,5 @@
 #include "address_space.h"
-
+#include "memutil.h"
 /*
 TBH this is hardly for address_space anymore and is more of a series of wrapper functions for xarray
 
@@ -122,4 +122,42 @@ int force_writeback(struct inode* inode){
   ret = generic_writepages(inode->i_mapping, &wb);
   printk(KERN_INFO "%d %ld\n", ret, wb.nr_to_write);
   return ret;
+}
+
+void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, int len){
+  char* new_page_ptr;
+  char* old_page_ptr; //these are kmapped addresses
+  char* ptr;
+  struct page* new_page; //this is the page to insert
+  struct page* old_page;
+  int count;
+  old_page = find_page_inode(i, bs_off);
+  if(!old_page){
+    printk(KERN_INFO "Invalid page \n");
+    return; 
+  }
+  new_page = alloc_page(GFP_KERNEL);
+  new_page_ptr = kmap(new_page);
+  old_page_ptr = kmap(old_page);
+  memcpy(new_page_ptr, old_page_ptr, 4096);
+
+  for(count = 0, ptr = new_page_ptr + pg_off(bs_off); count<len; count++, ptr++){
+    *ptr = *(buf+count);
+  }
+  kunmap((void*)new_page_ptr);
+  kunmap((void*)old_page_ptr); 
+  SetPageMappedToDisk(new_page);
+  SetPageUptodate(new_page);
+  replace_page(old_page, new_page);
+
+}
+
+void unmap_page(struct inode* i, unsigned long bs_off){//unmap page at bs_off
+  struct page* p = find_page_inode(i, bs_off);
+  if(!p){
+    return;
+  }
+  ClearPageReferenced(p);
+  ClearPageUptodate(p); //on next read the page will be flushed out by the read daemon. 
+
 }

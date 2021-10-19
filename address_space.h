@@ -15,3 +15,7 @@ struct page* remove_page(struct inode* i, unsigned long bs_off);
 void insert_page(struct inode* i, unsigned long bs_off, struct page* page);
 
 void replace_page(struct page* old, struct page* new);
+
+void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, int len);
+
+void unmap_page(struct inode* i, unsigned long bs_off);
