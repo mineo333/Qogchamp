@@ -51,7 +51,8 @@ struct page* find_page_inode(struct inode* i, unsigned long bs_off){
 }
 
 /*
-Removes page from a page cache mapping. This is unsafe. Don't use this.
+Removes page from a page cache mapping. This is a forcible version of unmap page and should be used
+for pages that cannot be swapped out due to reference counts
 */
 
 struct page* remove_page(struct inode* i, unsigned long bs_off){
