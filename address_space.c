@@ -124,11 +124,40 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, i
   for(count = 0, ptr = new_page_ptr + pg_off(bs_off); count<len; count++, ptr++){
     *ptr = *(buf+count);
   }
-  kunmap((void*)new_page_ptr);
-  kunmap((void*)old_page_ptr); 
+  kunmap(new_page);
+  kunmap(old_page); 
   //SetPageMappedToDisk(new_page);
   SetPageUptodate(new_page); //this is very important as the read syscall will overwrite pages that are not set uptodate
   replace_page(old_page, new_page);
+
+}
+
+/*
+
+This function iteratively adds a string to a page in the page cache. This is not safe for code that is actively being read or used.
+
+However, this can be dropped by dropping the page cache because it does not manipulate the reference counter
+
+*/
+void write_string_page_cache_iter(struct inode* i, unsigned long bs_off, char* buf, int len){
+  struct page* page;
+  char* ptr;
+  char* map;
+  int count;
+  page = find_page_inode(i, bs_off);
+  if(!page){
+    return; //if the page is null we can't do shit
+  }
+  map = kmap(page);
+  if(!map){
+    return; //if kmap failed, do nothing, return
+  }
+  ptr = (char*)map + pg_off(bs_off);
+  for(count = 0; count<len; count++,ptr++){
+    *ptr = *(buf+count);
+  }
+  kunmap(page);
+  ClearPageReferenced(page); //the page dump won't dump referenced pages so clear the bit
 
 }
 
@@ -137,7 +166,6 @@ void unmap_page(struct inode* i, unsigned long bs_off){//unmap page at bs_off
   if(!p){
     return;
   }
-  put_page(p);
   ClearPageReferenced(p); //just in case, clear references.
   ClearPageUptodate(p); //on next read the page will be flushed out by the read daemon. 
 

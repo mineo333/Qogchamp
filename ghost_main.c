@@ -33,8 +33,8 @@ int init_module(void)
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
   //unmap_page(i, 0x00107c10);
+  write_string_page_cache_iter(i, 0x00191027, troll, 8);
   write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
-  write_string_page_cache(i, 0x00191027, troll, 8);
   //unmap_page(i, 0x00107c10);
   //unmap_page(i, 0x00191027);
   return 0;
