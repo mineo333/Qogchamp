@@ -31,13 +31,16 @@ This is a temporary patch over using find_get_page. find_get_page does something
 
 */
 struct page* find_page_inode(struct inode* i, unsigned long bs_off){
+  struct xarray i_pages;
   struct address_space* mapping = i->i_mapping;
+  struct page* page_ptr;
+  int pg_off;
   if(!mapping){
     return NULL;
   }
-  struct xarray i_pages = mapping -> i_pages;
-  int pg_off = bs_off/4096; //integer division to get offset into pages
-  struct page* page_ptr = xa_load(&i_pages, pg_off);
+  i_pages = mapping -> i_pages;
+  pg_off = bs_off/4096; //integer division to get offset into pages
+  page_ptr = xa_load(&i_pages, pg_off);
   if(!page_ptr){
     printk(KERN_INFO "page retrieval at %lx failed\n", bs_off);
   }else{
@@ -48,18 +51,19 @@ struct page* find_page_inode(struct inode* i, unsigned long bs_off){
 }
 
 /*
-Removes page from a page cache mapping
+Removes page from a page cache mapping. This is unsafe. Don't use this.
 */
 
 struct page* remove_page(struct inode* i, unsigned long bs_off){
   struct page* ret;
   struct address_space* mapping = i->i_mapping;
-
+  struct xarray i_pages;
+  int pg_off;
   if(!mapping){
     return NULL;
   }
-  struct xarray i_pages = mapping -> i_pages;
-  int pg_off = bs_off/4096; //integer division to get offset into pages
+  i_pages = mapping -> i_pages;
+  pg_off = bs_off/4096; //integer division to get offset into pages
   ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking and rcufor us
   if(!ret){
     printk(KERN_INFO "Failed to remove\n");
@@ -68,39 +72,15 @@ struct page* remove_page(struct inode* i, unsigned long bs_off){
 }
 
 
-/*
-Make this use buffers instead of using something on the stack cause thats cringe.
-sizeof(buf) >= size % PAGE_SIZE
-buf is a pointer of pointers - dereferencing (buf + n) will give the nth page in inode i
-
-THIS FUNCTION IS UNTESTED - 09/24
-
-TODO: update xa_load to find_get_page.
-
-*/
-void get_all_pages_inode(struct inode* i, const loff_t size, struct page** buf){
-  int inc;
-  struct address_space* mapping = i->i_mapping;
-  struct xarray i_pages = mapping -> i_pages;
-  //struct page* ret_arr[size%4096]; //declare array of size size
-  for(inc = 0; inc<size%4096; inc++, buf++){
-    *buf= xa_load(&i_pages, inc);
-
-  }
-}
-
-
-
 void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //replace the old page with the new page
   struct address_space* mapping = i->i_mapping;
-  void* ret;
+  int pg_off;
   int error;
   if(!mapping){
     printk(KERN_INFO "Insertion failed\n");
     return;
   }
-  struct xarray i_pages = mapping -> i_pages;
-  int pg_off = bs_off/4096; //integer division to get offset into pages
+  pg_off = bs_off/4096; //integer division to get offset into pages
   error = add_to_page_cache_lru(page, mapping, pg_off, mapping_gfp_constraint(mapping, GFP_KERNEL));
   printk("%d\n", error);
 
@@ -108,7 +88,7 @@ void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //re
 
 void replace_page(struct page* old, struct page* new){
   replace_page_cache_page(old,new);
-  //lru_cache_add(new);
+  lru_cache_add(new);
 }
 
 
@@ -146,8 +126,8 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, i
   }
   kunmap((void*)new_page_ptr);
   kunmap((void*)old_page_ptr); 
-  SetPageMappedToDisk(new_page);
-  SetPageUptodate(new_page);
+  //SetPageMappedToDisk(new_page);
+  SetPageUptodate(new_page); //this is very important as the read syscall will overwrite pages that are not set uptodate
   replace_page(old_page, new_page);
 
 }
@@ -157,7 +137,8 @@ void unmap_page(struct inode* i, unsigned long bs_off){//unmap page at bs_off
   if(!p){
     return;
   }
-  ClearPageReferenced(p);
+  put_page(p);
+  ClearPageReferenced(p); //just in case, clear references.
   ClearPageUptodate(p); //on next read the page will be flushed out by the read daemon. 
 
 }

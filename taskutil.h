@@ -2,6 +2,9 @@
 
 #define BASH_PID 1
 
+#ifndef TASKUTIL_FUNCS
+#define TASKUTIL_FUNCS
+
 struct task_struct* get_task(pid_t pid);
 
 struct pid* get_pid_struct(pid_t pid);
@@ -21,3 +24,4 @@ struct task_struct* wait_task(char* name, size_t len);
 char* get_task_name(struct task_struct* t);
 
 struct inode* get_file_path(const char* path);
+#endif
