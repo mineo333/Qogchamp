@@ -8,12 +8,15 @@
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
 
+const char* net_adapter = "e1000";
+
 #define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.33.so"
 
 #define STRINGIFY(A) #A
 #define TOSTRING(A) STRINGIFY(A) //I don't why the fuck this works. If I had to take a guess, it is because when you pass in A in TOSTRING, you pass in the value of A which is then stringifyed.
 
-char* troll = "trolled";
+const char* troll = "trolled";
+
 
 
 char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
@@ -39,7 +42,19 @@ int init_module(void)
   //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
   remove_page(i, 0x00107c10); //extraction confirmed
   remove_page(i, 0x00191027);*/
-  enumerate_pci();
+
+  //enumerate_pci();
+  //printk(KERN_INFO "%lx\n", (unsigned long)net_adapter);
+  //printk(KERN_INFO "%s\n", net_adapter);
+  struct pci_dev* pd = find_pci(net_adapter, 5);
+  if(pd){
+    printk("pci name: %s, irq: %d", get_dev_name(pd), pd->irq);
+  }
+  struct net_device* nd = get_net_dev(pd);
+
+  if(nd){
+    printk(KERN_INFO "tx queue len:%d\n", nd->tx_queue_len);
+  }
   return 0;
 }
 void cleanup_module(void)
@@ -47,6 +62,4 @@ void cleanup_module(void)
 	printk("Module cleanup\n");
 }
 MODULE_LICENSE("GPL");
-
-
   

@@ -31,3 +31,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <asm-generic/errno-base.h>
 #include <linux/swap.h>
 #include <linux/pci.h>
+#include <linux/netdevice.h>
