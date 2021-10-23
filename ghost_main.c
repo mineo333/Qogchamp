@@ -3,6 +3,7 @@
 #include "memutil.h"
 #include "depend.h"
 #include "address_space.h"
+#include "networking.h"
 #ifndef VICTIM_FILE
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
@@ -18,8 +19,9 @@ char* troll = "trolled";
 char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
 int init_module(void)
 {
-  char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;////VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
-  	struct inode* i = get_file_path(path);//
+  printk(KERN_INFO "Printing out pci devices\n");
+  /*char* path = TOSTRING(VICTIM_FILE);//;//VICTIM_FILE_OVERRIDE;////VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
+  struct inode* i = get_file_path(path);//
   if(!i){
     printk(KERN_INFO "Invalid path\n");
     return 0;
@@ -36,7 +38,8 @@ int init_module(void)
   //write_string_page_cache(i, 0x00191027, troll, 8);
   //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
   remove_page(i, 0x00107c10); //extraction confirmed
-  remove_page(i, 0x00191027);
+  remove_page(i, 0x00191027);*/
+  enumerate_pci();
   return 0;
 }
 void cleanup_module(void)

@@ -30,3 +30,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/gfp.h>
 #include <asm-generic/errno-base.h>
 #include <linux/swap.h>
+#include <linux/pci.h>
