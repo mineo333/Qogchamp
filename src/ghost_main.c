@@ -1,9 +1,9 @@
 #include "taskutil.h"
-#include "regset.h"
 #include "memutil.h"
 #include "depend.h"
 #include "address_space.h"
 #include "networking.h"
+#include "e1000.h"
 #ifndef VICTIM_FILE
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif

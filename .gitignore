@@ -2,4 +2,4 @@ bin/*
 !bin/Kbuild
 *.ko
 .vscode
-e1000/*.c
+Module.symvers
