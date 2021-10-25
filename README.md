@@ -1,6 +1,8 @@
-# GhostFops
+THIS README IS OUT OF DATE
 
-GhostFops is a kernel post exploitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosophy.
+# Qogchamp
+
+Qogchamp is a kernel post exploitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosophy.
 
 
 ## Purpose

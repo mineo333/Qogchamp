@@ -30,7 +30,7 @@ KBUILD_OUTPUT:= $(PWD)/bin
 all:
 	@echo $($(MODULE_NAME)-y)
 	make -C $(KDIR) M=$(PWD) modules
-	mv src/*.o ghost.mod* modules.order ghost.o $(BUILD_DIR)
+	mv src/*.o ghost.mod* modules.order ghost.o $(BUILD_DIR) #clean up
 clean:
 	rm -f $(PWD)/ghost.ko/
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
