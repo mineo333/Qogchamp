@@ -1,10 +1,10 @@
 ############################ object declaration ############################
 
-MODULE_NAME := ghost
+MODULE_NAME := qogchamp
 
 obj-m += $(MODULE_NAME).o
 
-OBJ := memutil.o regset.o taskutil.o ghost_main.o address_space.o networking.o 
+OBJ := memutil.o regset.o taskutil.o qogchamp_main.o address_space.o networking.o 
 
 $(MODULE_NAME)-y := $(patsubst %.o, src/%.o, $(OBJ))
 
@@ -30,7 +30,6 @@ KBUILD_OUTPUT:= $(PWD)/bin
 all:
 	@echo $($(MODULE_NAME)-y)
 	make -C $(KDIR) M=$(PWD) modules
-	mv src/*.o ghost.mod* modules.order ghost.o $(BUILD_DIR) #clean up
+	mv src/*.o $(MODULE_NAME).mod* modules.order $(MODULE_NAME).o $(BUILD_DIR) #clean up
 clean:
-	rm -f $(PWD)/ghost.ko/
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
