@@ -1,0 +1,1 @@
+cmd_/home/mineo333/GhostFops/qogchamp.o := ld -m elf_x86_64   -r -o /home/mineo333/GhostFops/qogchamp.o /home/mineo333/GhostFops/src/memutil.o /home/mineo333/GhostFops/src/regset.o /home/mineo333/GhostFops/src/taskutil.o /home/mineo333/GhostFops/src/qogchamp_main.o /home/mineo333/GhostFops/src/address_space.o /home/mineo333/GhostFops/src/networking.o

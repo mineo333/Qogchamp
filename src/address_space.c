@@ -25,9 +25,10 @@ struct page* find_page_file(struct file* f, int bs_off){
 }
 
 /*
-The main advantage of this function is that it does not increment refcount
+The main advantage of this function is that it does not increment refcount. So, use this at your own risk because a reference can disappear under you.
 
 This is a temporary patch over using find_get_page. find_get_page does something with zoning that prevents dumping the page cache
+
 
 */
 struct page* find_page_inode(struct inode* i, unsigned long bs_off){
@@ -40,7 +41,7 @@ struct page* find_page_inode(struct inode* i, unsigned long bs_off){
   }
   i_pages = mapping -> i_pages;
   pg_off = bs_off/4096; //integer division to get offset into pages
-  page_ptr = xa_load(&i_pages, pg_off);
+  page_ptr = xa_load(&i_pages, pg_off); 
   if(!page_ptr){
     printk(KERN_INFO "page retrieval at %lx failed\n", bs_off);
   }else{
@@ -59,13 +60,12 @@ struct page* remove_page(struct inode* i, unsigned long bs_off){
   struct page* ret;
   struct address_space* mapping = i->i_mapping;
   struct xarray i_pages;
-  int pg_off;
+  int pg_off = bs_off/4096; //integer division to get offset into pages
   if(!mapping){
     return NULL;
   }
-  i_pages = mapping -> i_pages;
-  pg_off = bs_off/4096; //integer division to get offset into pages
-  ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking and rcufor us
+  i_pages = mapping -> i_pages; 
+  ret = xa_erase(&i_pages, pg_off); //xa_erase handles locking and rcu for us
   if(!ret){
     printk(KERN_INFO "Failed to remove\n");
   }
@@ -88,6 +88,7 @@ void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //re
 }
 
 void replace_page(struct page* old, struct page* new){
+  wait_on_page_writeback(old); //wait for writeback to complete. This will check the writeback bit
   replace_page_cache_page(old,new);
   lru_cache_add(new);
 }
@@ -120,14 +121,14 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, i
   new_page = alloc_page(GFP_KERNEL);
   new_page_ptr = kmap(new_page);
   old_page_ptr = kmap(old_page);
-  memcpy(new_page_ptr, old_page_ptr, 4096);
+  memcpy(new_page_ptr, old_page_ptr, 4096); 
 
   for(count = 0, ptr = new_page_ptr + pg_off(bs_off); count<len; count++, ptr++){
     *ptr = *(buf+count);
   }
   kunmap(new_page);
   kunmap(old_page); 
-  //SetPageMappedToDisk(new_page);
+  SetPageMappedToDisk(new_page);
   SetPageUptodate(new_page); //this is very important as the read syscall will overwrite pages that are not set uptodate
   replace_page(old_page, new_page);
 

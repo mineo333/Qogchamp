@@ -1,5 +1,7 @@
 #include "networking.h"
-
+#include "e1000.h"
+#include "e1000_hw.h"
+#include "e1000_osdep.h"
 /*
 Eventually a good portion of these functions will likely be moved to their own pci file
 */
@@ -12,6 +14,11 @@ Random notes:
 
 */
 
+
+
+struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
+    return (struct e1000_adapter*) netdev_priv(net_dev);
+}
 
 struct pci_dev* find_pci(const char* d_name, int size){ 
     struct pci_dev* d; 

@@ -1,13 +1,12 @@
-Note that this README is fairly sparse. For more information, I am working on a series of posts on my blog [here](https://mineo333.github.io) describing it in signficantly more detail. However, until that is done, I will leave this README up.
-
 # Qogchamp
 
 Qogchamp is a kernel post exploitation module that exploits an overlooked portion of the Linux Kernel's page cache design philosophy.
 
-## Purpose
-QogChamp's current purpose is providing ghost file operations or the ability to write to files discreetly with minimal logging and detection.
 
-There are 2 cases for QogChamp thus far: File Memory Mappings and Inodes
+## Purpose
+Qogchamp is just that - Ghost File Operations. The goal is to provide a library for writing to files discreetly with minimal logging.
+
+There are 2 cases for Qogchamp thus far: File Memory Mappings and Inodes
 
 ## Design Philosophy Exploited
 

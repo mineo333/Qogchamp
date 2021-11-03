@@ -4,6 +4,8 @@
 #include "address_space.h"
 #include "networking.h"
 #include "e1000.h"
+#include "e1000_hw.h"
+#include "e1000_osdep.h"
 #ifndef VICTIM_FILE
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
@@ -23,7 +25,7 @@ char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7
 int init_module(void)
 {
   printk(KERN_INFO "Printing out pci devices\n");
-  /*char* path = VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//;//VICTIM_FILE_OVERRIDE;////VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE);//VICTIM_FILE_OVERRIDE;//TOSTRING(VICTIM_FILE)
+ /* char* path = VICTIM_FILE_OVERRIDE;
   struct inode* i = get_file_path(path);//
   if(!i){
     printk(KERN_INFO "Invalid path\n");
@@ -49,12 +51,31 @@ int init_module(void)
   struct pci_dev* pd = find_pci(net_adapter, 5);
   if(pd){
     printk("pci name: %s, irq: %d", get_dev_name(pd), pd->irq);
+  }else{
+    printk(KERN_INFO "Couldn't find a pci device with name %s\n", net_adapter);
+    return 0;
   }
   struct net_device* nd = get_net_dev(pd);
 
-  if(nd){
-    printk(KERN_INFO "tx queue len:%d\n", nd->tx_queue_len);
+  if(!nd){
+    printk(KERN_INFO "Couldn't find net_device. This is likely not a net device\n");
+    return 0;//printk(KERN_INFO "tx queue len:%d\n", nd->tx_queue_len);
   }
+
+  struct e1000_adapter* e1000 = get_e1000_adapter(nd);
+
+  if(!e1000){
+    printk(KERN_INFO "Couldn't find e1000 adapter");
+    return 0;
+  }
+  if(e1000 -> pdev == pd){
+    printk(KERN_INFO "This is indeed the e1000\n");
+  }else{
+    printk(KERN_INFO "This is not the e1000\n");
+  }
+
+
+
   return 0;
 }
 void cleanup_module(void)
