@@ -3,3 +3,5 @@ bin/*
 *.ko
 .vscode
 Module.symvers
+.*
+src/.*
