@@ -11,10 +11,18 @@ Eventually a good portion of these functions will likely be moved to their own p
 Random notes:
 * pci_name() is useless and does not give any useful information whatsoever. Use the driver names
 * In the case of the e1000, the driver data is filled with the net_dev struct
+* Disabling the irq will, as expected, stop the NIC from working
+* Cool resource on rx/tx and dma ring buffers:https://newbedev.com/what-is-the-relationship-of-dma-ring-buffer-and-tx-rx-ring-for-a-network-card
+
 
 */
 
 
+
+void* get_rx_buffer(struct e1000* e1000){
+    if(!e1000){return NULL;}
+    return NULL;
+}
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
@@ -45,13 +53,13 @@ void enumerate_pci(void){
         printk(KERN_INFO "%s\n", d->driver->name); 
     }
 }
-const char* get_pci_name(struct pci_dev* pd){
+const char* get_pci_name(struct pci_dev* pd){ //this gets the "true name" - the name of the driver. It can be considered the common name
     if(!pd -> driver){
         return NULL;
     }
     return pd->driver->name;
 }
 
-const char* get_dev_name(struct pci_dev* pd){
+const char* get_dev_name(struct pci_dev* pd){ //this gets the name of the pci device on the Linux system. This is useful to search sysfs
     return pci_name(pd);
 }
