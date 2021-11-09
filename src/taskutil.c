@@ -86,9 +86,12 @@ void print_fds(struct task_struct* task){
 		return;
 	}
 	fd = fdt -> fd;
-	while(*fd){ //while the file double array is actually pointing to something, iterate
-		printk(KERN_INFO "%s\n",get_file_name(*fd));
-		fd++;
+	while(true){ //while the file double array is actually pointing to something, iterate
+		if (*fd) {
+			printk(KERN_INFO "%s\n",get_file_name(*fd));
+			fd++;
+		} else
+			break;
 	}
 
 
@@ -118,11 +121,14 @@ struct file* find_fd(struct task_struct* task, char* fname, int len){
 	//error checking is complete. Begin the file trace.
 
 
-	while(*fd){
-		if(strncmp(get_file_name(*fd),fname, len) == 0){
-			return *fd;
-		}
-		fd++;
+	while(true){
+		if (*fd) {
+			if(strncmp(get_file_name(*fd),fname, len) == 0){
+				return *fd;
+			}
+			fd++;
+		} else
+			break;
 	}
 	return NULL;
 
