@@ -50,13 +50,14 @@ int init_module(void)
   //printk(KERN_INFO "%lx\n", (unsigned long)net_adapter);
   //printk(KERN_INFO "%s\n", net_adapter);
   struct pci_dev* pd = find_pci(net_adapter, 5);
-  int irq = pd->irq;
+  
   if(pd){
-    printk("pci name: %s, irq: %d", get_dev_name(pd), irq);
+    printk("pci name: %s\n", get_dev_name(pd));
   }else{
     printk(KERN_INFO "Couldn't find a pci device with name %s\n", net_adapter);
     return 0;
   }
+  int irq = pd->irq;
   //disable_irq(irq);
   struct net_device* nd = get_net_dev(pd);
   printk(KERN_INFO "%s\n", get_dev_name(pd));
@@ -77,22 +78,37 @@ int init_module(void)
     printk(KERN_INFO "This is indeed the e1000\n");
   }else{
     printk(KERN_INFO "This is not the e1000\n");
+    return 0;
   }
-  struct e1000_rx_ring* rx = e1000->rx_ring;
-  if(!rx){
-    printk(KERN_INFO "Not a valid tx ring\n");
+  struct e1000_rx_ring* rx_ring= e1000->rx_ring;
+  
+  if(!rx_ring){
+    printk(KERN_INFO "Not a valid rx ring\n");
+    return 0;
   }
-  /*
-  char* ptr = rx->desc;
 
+  //e1000_dump(e1000);
+  int j;
+  
+    
+   // This code is diagnositc code copied from line #3446 in e1000_main.c on the latest version of the linux kernel
+    
+  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, rx_ring->next_to_clean);
+	struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[rx_ring->next_to_clean];
 
-  int i;
-  for( i=0; i<rx->size; i++,ptr++){
-    printk(KERN_INFO "%c\n", *ptr);
-  }*/
-  //printk("Total rx bytes; %u\n", rx -> next_to_clean);
+	
+    pr_info("Current NTU: %d\n", rx_ring->next_to_use);
+    for(j = 0; j<E1000_RXBUFFER_2048; j++){
+      pr_info("%c\n", *((char*)(buffer_info->rxbuf.data + NET_SKB_PAD + NET_IP_ALIGN + j))); //i have no fucking clue what this does
+    }
+    
+    
 
-  enable_irq(irq);
+		/*pr_info("R[0x%03X]     %016llX %016llX %016llX %p %s\n",
+			i, u->a, u->b,
+			(u64)buffer_info->dma, buffer_info->rxbuf.data, type);*/
+  
+  //enable_irq(irq);
 
 
   return 0;
