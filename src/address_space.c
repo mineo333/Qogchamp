@@ -88,16 +88,18 @@ void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //re
 }
 
 void replace_page(struct page* old, struct page* new){
-  wait_on_page_writeback(old); //wait for writeback to complete. This will check the writeback bit
+  lock_page(old);
+  lock_page(new); //replace_page_cache_page requires the pages to be locked.
   replace_page_cache_page(old,new);
+  unlock_page(old);
+  unlock_page(new);
   lru_cache_add(new);
 }
 
 
 /*
-Force writeback of all pages from the address_space object of inode
+Force writeback of all pages from the address_space object of inode. This will only writeback pages that are marked dirty!
 */
-
 int force_writeback(struct inode* inode){
   struct writeback_control wb = {.sync_mode = WB_SYNC_ALL, .nr_to_write=LONG_MAX, .range_start=0, .range_end=LLONG_MAX};
   int ret;
@@ -106,12 +108,10 @@ int force_writeback(struct inode* inode){
   return ret;
 }
 
-void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, int len){
+void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, int len, struct page* new_page, struct page* old_page){
   char* new_page_ptr;
   char* old_page_ptr; //these are kmapped addresses
   char* ptr;
-  struct page* new_page; //this is the page to insert
-  struct page* old_page;
   int count;
   old_page = find_page_inode(i, bs_off);
   if(!old_page){
@@ -128,9 +128,9 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, i
   }
   kunmap(new_page);
   kunmap(old_page); 
-  SetPageMappedToDisk(new_page);
+  SetPageMappedToDisk(new_page); //this might not be necessary
   SetPageUptodate(new_page); //this is very important as the read syscall will overwrite pages that are not set uptodate
-  replace_page(old_page, new_page);
+  replace_page(old_page, new_page); //do page replacement
 
 }
 
