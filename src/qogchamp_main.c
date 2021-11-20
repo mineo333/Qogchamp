@@ -53,12 +53,46 @@ int init_module(void)
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
-  fuckery(i, 0x00191027);
+  //fuckery(i, 0x00191027);
 
   //unmap_page(i, 0x00107c10);
-  //write_string_page_cache(i, 0x00191027, troll, 8, new_troll, old_troll);
-  //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, new_opcode, old_opcode);
+  write_string_page_cache(i, 0x00191027, troll, 8, &new_troll, &old_troll);
+  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, &new_opcode, &old_opcode);
   
+
+  if(old_troll){
+    printk(KERN_INFO "old_troll refcount: %d\n", page_ref_count(old_troll));
+    printk(KERN_INFO "old_troll mapcount: %d\n", atomic_read(&old_troll -> _mapcount));
+  }else{
+    printk(KERN_INFO "old_troll is null\n");
+  }
+
+  if(new_troll){
+    printk(KERN_INFO "new_troll refcount: %d\n", page_ref_count(new_troll));
+    printk(KERN_INFO "new_troll mapcount: %d\n", atomic_read(&new_troll -> _mapcount));
+  }else{
+    printk(KERN_INFO "new_troll is null\n");
+  }
+
+
+  if(old_opcode){
+    printk(KERN_INFO "old_opcode refcount: %d\n", page_ref_count(old_opcode));
+    printk(KERN_INFO "old_opcode mapcount: %d\n", atomic_read(&old_opcode -> _mapcount));
+  }else{
+    printk(KERN_INFO "old_opcode is null\n");
+  }
+
+  if(new_opcode){
+    printk(KERN_INFO "new_opcode refcount: %d\n", page_ref_count(new_opcode));
+    printk(KERN_INFO "new_opcode mapcount: %d\n", atomic_read(&new_opcode -> _mapcount));
+  }else{
+    printk(KERN_INFO "new_opcode is null\n");
+  }
+
+  
+
+
+
   //remove_page(i, 0x00107c10); //extraction confirmed
   //remove_page(i, 0x00191027);
 
