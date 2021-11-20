@@ -22,5 +22,7 @@ void write_string_page_cache_iter(struct inode* i, unsigned long bs_off, char* b
 
 void unmap_page(struct inode* i, unsigned long bs_off);
 
+void fuckery(struct inode* i, unsigned long bs_off);
+
 
 #endif

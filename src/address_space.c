@@ -108,17 +108,31 @@ int force_writeback(struct inode* inode){
   return ret;
 }
 
+void fuckery(struct inode* i, unsigned long bs_off){ //testing ground
+  struct page* old_page = find_page_inode(i, bs_off);
+  lock_page(old_page);
+  old_page -> mapping = NULL; //this will probably break some things
+  printk("Old page ref: %d\n", page_ref_count(old_page)); 
+  //printk("New page ref: %d\n", page_ref_count(new_page));
+}
+
 void write_string_page_cache(struct inode* i, unsigned long bs_off, char* buf, int len, struct page* new_page, struct page* old_page){
   char* new_page_ptr;
   char* old_page_ptr; //these are kmapped addresses
   char* ptr;
   int count;
+  
   old_page = find_page_inode(i, bs_off);
+
+
   if(!old_page){
     printk(KERN_INFO "Invalid page \n");
     return; 
   }
   new_page = alloc_page(GFP_KERNEL);
+
+ 
+  
   new_page_ptr = kmap(new_page);
   old_page_ptr = kmap(old_page);
   memcpy(new_page_ptr, old_page_ptr, 4096); 

