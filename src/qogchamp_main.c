@@ -37,11 +37,12 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
 	  int j;
     for(j = 0; j<rx_desc->length; j++){
       char next_char = *((char*)(buffer_info->rxbuf.data + j));
-      if(next_char != 0x00){
-        printk(KERN_INFO "%c\n", next_char);
-      }
+     // if(next_char != 0x00){
+        printk(KERN_INFO "%x\n", next_char & 0xff); //packet successfully obtained
+     // }
        
     }
+    printk(KERN_INFO "___________________________\n");
     i = (++i%rx_ring->count);
   }
   return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
