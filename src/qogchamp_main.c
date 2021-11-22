@@ -25,15 +25,25 @@ bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_rin
 //old_clean_rx is always e1000_clean_rx_irq if we are using standard sized frames
 
 bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
-  int j;
-  printk(KERN_INFO "Clean rx\n");
-  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, rx_ring->next_to_clean);
-	struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[rx_ring->next_to_clean];
+  
+  //printk(KERN_INFO "Clean rx\n");
+  int i = rx_ring -> next_to_clean;
 
-	  
+  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
+  struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
+  while(rx_desc->status & E1000_RXD_STAT_DD){
+    rx_desc = E1000_RX_DESC(*rx_ring, i);
+	  buffer_info = &rx_ring->buffer_info[i];
+	  int j;
     for(j = 0; j<rx_desc->length; j++){
-      pr_info("%c\n", *((char*)(buffer_info->rxbuf.data + NET_SKB_PAD + NET_IP_ALIGN + j))); //i have no fucking clue what this does
+      char next_char = *((char*)(buffer_info->rxbuf.data + j));
+      if(next_char != 0x00){
+        printk(KERN_INFO "%c\n", next_char);
+      }
+       
     }
+    i = (++i%rx_ring->count);
+  }
   return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
 }
 
@@ -83,8 +93,6 @@ int init_module(void)
     printk(KERN_INFO "Couldn't find a pci device with name %s\n", net_adapter);
     return 0;
   }
-  int irq = pd->irq;
-  //disable_irq(irq);
   struct net_device* nd = get_net_dev(pd);
   printk(KERN_INFO "%s\n", get_dev_name(pd));
   if(!nd){
