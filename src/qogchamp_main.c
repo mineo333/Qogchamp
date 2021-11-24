@@ -34,14 +34,15 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
   while(rx_desc->status & E1000_RXD_STAT_DD){
     rx_desc = E1000_RX_DESC(*rx_ring, i);
 	  buffer_info = &rx_ring->buffer_info[i];
-	  int j;
+    memset(buffer_info->rxbuf.data, rx_desc->length, 0x0); //lmao
+	  /*int j;
     for(j = 0; j<rx_desc->length; j++){
       char next_char = *((char*)(buffer_info->rxbuf.data + j));
      // if(next_char != 0x00){
-        printk(KERN_INFO "%x\n", next_char & 0xff); //packet successfully obtained
+        printk(KERN_INFO "0x%x\n", next_char & 0xff); //packet successfully obtained
      // }
        
-    }
+    }*/
     printk(KERN_INFO "___________________________\n");
     i = (++i%rx_ring->count);
   }

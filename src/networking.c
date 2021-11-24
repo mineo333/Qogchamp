@@ -17,6 +17,13 @@ Random notes:
 
 */
 
+struct e1000_frame{ //we conviently get the same view as wireshark. So, we can just copy from there.
+	
+	struct eth_frame* eth;
+
+
+};
+
 
 
 void* get_rx_buffer(struct e1000* e1000){
