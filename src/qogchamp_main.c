@@ -34,15 +34,19 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
   while(rx_desc->status & E1000_RXD_STAT_DD){
     rx_desc = E1000_RX_DESC(*rx_ring, i);
 	  buffer_info = &rx_ring->buffer_info[i];
-    memset(buffer_info->rxbuf.data, rx_desc->length, 0x0); //lmao
-	  /*int j;
+    //dma_sync_single_for_cpu(&adapter->pdev->dev,buffer_info->dma,rx_desc->length,DMA_FROM_DEVICE);
+    memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
+    printk("Zeroed the %d buffer", i);
+	  int j;
     for(j = 0; j<rx_desc->length; j++){
       char next_char = *((char*)(buffer_info->rxbuf.data + j));
+     // *((char*)(buffer_info->rxbuf.data + j)) = 0x0;
      // if(next_char != 0x00){
         printk(KERN_INFO "0x%x\n", next_char & 0xff); //packet successfully obtained
+        //printk(KERN_INFO "0x%x\n", *((char*)(buffer_info->rxbuf.data + j)) & 0xff);
      // }
        
-    }*/
+    }
     printk(KERN_INFO "___________________________\n");
     i = (++i%rx_ring->count);
   }
