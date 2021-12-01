@@ -26,30 +26,27 @@ bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_rin
 
 bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
   
-  //printk(KERN_INFO "Clean rx\n");
   int i = rx_ring -> next_to_clean;
-
   struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
   struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
+
+
   while(rx_desc->status & E1000_RXD_STAT_DD){
-    rx_desc = E1000_RX_DESC(*rx_ring, i);
-	  buffer_info = &rx_ring->buffer_info[i];
+    
     //dma_sync_single_for_cpu(&adapter->pdev->dev,buffer_info->dma,rx_desc->length,DMA_FROM_DEVICE);
     memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
-    printk("Zeroed the %d buffer", i);
-	  int j;
-    for(j = 0; j<rx_desc->length; j++){
-      char next_char = *((char*)(buffer_info->rxbuf.data + j));
-     // *((char*)(buffer_info->rxbuf.data + j)) = 0x0;
-     // if(next_char != 0x00){
-        printk(KERN_INFO "0x%x\n", next_char & 0xff); //packet successfully obtained
-        //printk(KERN_INFO "0x%x\n", *((char*)(buffer_info->rxbuf.data + j)) & 0xff);
-     // }
-       
-    }
-    printk(KERN_INFO "___________________________\n");
-    i = (++i%rx_ring->count);
-  }
+
+    
+    
+    //printk("Zeroed the %d buffer", i);
+	  
+
+      i = (++i%rx_ring->count);
+      rx_desc = E1000_RX_DESC(*rx_ring, i);
+	    buffer_info = &rx_ring->buffer_info[i];
+    } 
+    
+    //return 0;
   return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
 }
 
@@ -118,7 +115,7 @@ int init_module(void)
 
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
-  e1000->clean_rx = new_clean_rx; //add new, shitty clean_rx*/
+  e1000->clean_rx = new_clean_rx; 
 
 
   printk(KERN_INFO "clean_rx replaced\n");
