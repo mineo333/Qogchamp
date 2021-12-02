@@ -27,25 +27,32 @@ bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_rin
 
 bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
   
-  int i = rx_ring -> next_to_clean;
+  int i = rx_ring -> next_to_clean+1;
+  int start = rx_ring -> next_to_clean;
   struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
   struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
 
 
-  while(rx_desc->status & E1000_RXD_STAT_DD){
-    
-    //dma_sync_single_for_cpu(&adapter->pdev->dev,buffer_info->dma,rx_desc->length,DMA_FROM_DEVICE);
-    //memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
+  while(/*rx_desc->status & E1000_RXD_STAT_DD*/ i != start){
+      
+      struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
+      //printk(KERN_INFO "%d\n", strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6));
+      if(!strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6)){
+        memset(buffer_info->rxbuf.data, 0x0, rx_desc->length);
+      }
+      
+
+
+      //memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
 
     //removing debugging information is important to to have zero all buffers. IDK why this is. It might have something to do with 
     
-    
-    //printk("Zeroed the %d buffer", i);
-
+     /* printk(KERN_INFO "_____________________________\n");
       int j = 0;
       for(; j<rx_desc -> length; j++){
-
-      }
+        char next_char = *(buffer_info ->rxbuf.data + j);
+        printk(KERN_INFO "0x%x\n", next_char & 0xff);
+      }*/
 
       i = (++i%rx_ring->count);
       rx_desc = E1000_RX_DESC(*rx_ring, i);
@@ -112,16 +119,19 @@ int init_module(void)
 
   printk("MTU: %u\n", nd -> mtu);
   e1000 = get_e1000_adapter(nd);
+
   
   if(!e1000){
     printk(KERN_INFO "Couldn't find e1000 adapter");
     return 0;
   }
 
+  printk("RX Rings: %d\n", e1000 ->num_rx_queues);
+
 
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
-  e1000->clean_rx = e1000_clean_rx_irq; 
+  e1000->clean_rx = new_clean_rx; 
 
 
   printk(KERN_INFO "clean_rx replaced\n");

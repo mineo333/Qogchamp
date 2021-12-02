@@ -17,6 +17,10 @@ Random notes:
 
 
 
+
+// BELOW ARE ALL THE PCI ENUMERATION FUNCTIONS
+
+
 struct pci_dev* find_pci(const char* d_name, int size){ 
     struct pci_dev* d; 
     printk(KERN_INFO "Starting find_pci with %s\n", d_name); //for some reason this function will die if this line is not here
@@ -34,6 +38,7 @@ struct pci_dev* find_pci(const char* d_name, int size){
 struct net_device* get_net_dev(struct pci_dev* pd){
     return pci_get_drvdata(pd);
 }
+
 void enumerate_pci(void){
     struct pci_dev* d;
     for_each_pci_dev(d){ //macro in pci.h
