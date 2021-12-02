@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "e1000_hook.h": "c"
     }
 }

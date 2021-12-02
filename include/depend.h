@@ -36,3 +36,8 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
 #include <linux/dma-mapping.h>
+#include <linux/prefetch.h>
+#include <asm-generic/barrier.h>
+#include <linux/byteorder/generic.h>
+#include <linux/etherdevice.h>
+#include <linux/if_vlan.h>

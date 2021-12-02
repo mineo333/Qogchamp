@@ -12,8 +12,5 @@ const char* get_dev_name(struct pci_dev* pd);
 
 struct net_device* get_net_dev(struct pci_dev* pd);
 
-struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev);
-
-void e1000_dump(struct e1000_adapter *adapter);
 
 #endif
