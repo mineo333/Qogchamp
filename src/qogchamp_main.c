@@ -27,13 +27,13 @@ bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_rin
 
 bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
   
-  int i = rx_ring -> next_to_clean+1;
+  int i = rx_ring -> next_to_clean;
   int start = rx_ring -> next_to_clean;
   struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
   struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
 
 
-  while(/*rx_desc->status & E1000_RXD_STAT_DD*/ i != start){
+  while(/*rx_desc->status & E1000_RXD_STAT_DD*/){
       
       struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
       //printk(KERN_INFO "%d\n", strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6));
@@ -58,6 +58,7 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
       rx_desc = E1000_RX_DESC(*rx_ring, i);
 	    buffer_info = &rx_ring->buffer_info[i];
     } 
+    printk(KERN_INFO "End");
     
     //return 0;
   return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW

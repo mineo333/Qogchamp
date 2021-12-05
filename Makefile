@@ -28,6 +28,7 @@ KBUILD_OUTPUT:= $(PWD)/bin
 
 
 all:
+	mkdir -p bin
 	@echo $($(MODULE_NAME)-y)
 	make -C $(KDIR) M=$(PWD) modules
 	mv src/*.o $(MODULE_NAME).mod* modules.order $(MODULE_NAME).o $(BUILD_DIR) #clean up
