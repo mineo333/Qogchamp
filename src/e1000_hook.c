@@ -1,6 +1,7 @@
 #include "e1000_hook.h"
 #include "e1000_hw.h"
 #include "e1000_osdep.h"
+#include "networking.h"
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
@@ -197,7 +198,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 	int cleaned_count = 0;
 	bool cleaned = false;
 	unsigned int total_rx_bytes = 0, total_rx_packets = 0;
-
+	
 	i = rx_ring->next_to_clean;
 	rx_desc = E1000_RX_DESC(*rx_ring, i);
 	buffer_info = &rx_ring->buffer_info[i];
@@ -211,17 +212,59 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 			break;
 		(*work_done)++;
 		dma_rmb(); /* read descriptor and rx_buffer_info after status DD */
+		
+		
+
 
 		status = rx_desc->status;
 		length = le16_to_cpu(rx_desc->length);
 
 		data = buffer_info->rxbuf.data;
 		prefetch(data);
-		skb = e1000_copybreak(adapter, buffer_info, length, data);
-		if (!skb) {
-			unsigned int frag_len = e1000_frag_len(adapter);
 
+		
+		skb = e1000_copybreak(adapter, buffer_info, length, data); //copybreak is a method that is used for small frames. 
+		if (!skb) {
+			
+			unsigned int frag_len = e1000_frag_len(adapter); 
+			//This returns the intended length of the skb. This is equivalent to the max length of a rx desc (1522) - look in qogchamp_main + E1000_HEADROOM + sizeof(skb_shared_info)
+			//I don't know what the last two are for.
+			//Looking into build_skb we see that the size is decremented by sizeof(skb_shared_info) 
+			//
+
+
+			//printk("Didn't copybreak. Copybreak: %d, Length: %d, Frag Len: %d", copybreak, length, frag_len);	
 			skb = build_skb(data - E1000_HEADROOM, frag_len);
+			//
+			/*
+			Upon building the SKB, we get the following state:
+			This information can be found in build_skb -> __build_skb -> __build_skb_around
+			head --> data --> tail --> ___________________________
+									   |						  |
+									   |						  |
+									   | E1000_HEADROOM (64 bytes)|
+									   |						  |
+									   |						  |
+									   |__________________________|
+									   |						  |
+									   |						  |
+									   |						  |
+									   |						  |
+									   |	Actual data			  |
+									   |True length: rx_desc ->len|
+									   |Max length: frag_len(1522)|
+									   |						  |
+									   |__________________________|
+									   |						  |
+									   |						  |
+									   |  sizeof(skb_shared_info) |
+									   |						  |
+									   |						  |
+								end--> |__________________________|
+					
+			
+			*/
+
 			if (!skb) {
 				adapter->alloc_rx_buff_failed++;
 				break;
@@ -235,6 +278,12 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 			buffer_info->rxbuf.data = NULL;
 		}
 
+		//printk(KERN_INFO "head: %lu, data: %lu, tail: %d, end: %d\n", (unsigned long)skb->head, (unsigned long)skb->data, skb->tail, skb->end);
+		/*int j = 0;
+		printk(KERN_INFO "_______________________________");
+		for(; j<E1000_HEADROOM; j++){
+			printk(KERN_INFO "0x%x", *(char*)(skb->head+j) & 0xff);
+		}*/
 		if (++i == rx_ring->count)
 			i = 0;
 
@@ -245,6 +294,10 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 
 		cleaned = true;
 		cleaned_count++;
+
+		
+
+
 
 		/* !EOP means multiple descriptors were used to store a single
 		 * packet, if thats the case we need to toss it.  In fact, we
@@ -287,10 +340,12 @@ process_skb:
 			 */
 			length -= 4;
 
-		if (buffer_info->rxbuf.data == NULL)
-			skb_put(skb, length);
+		if (buffer_info->rxbuf.data == NULL) //not copybreak skb. Note the last line in the !skb block
+			skb_put(skb, length); 
 		else /* copybreak skb */
 			skb_trim(skb, length);
+
+
 
 		/* Receive Checksum Offload */
 		e1000_rx_checksum(adapter,

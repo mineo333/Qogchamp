@@ -26,15 +26,16 @@ bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_rin
 //old_clean_rx is always e1000_clean_rx_irq if we are using standard sized frames
 
 bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
-  
+  //KEEP IN MIND THAT THIS CODE IS RUNNING IN INTERRUPT CONTEXT
   int i = rx_ring -> next_to_clean;
-  int start = rx_ring -> next_to_clean;
   struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
   struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
 
 
-  while(/*rx_desc->status & E1000_RXD_STAT_DD*/){
-      
+  while(rx_desc->status & E1000_RXD_STAT_DD){
+      //printk(KERN_INFO "start %d, i: %d", start, i);
+      //dma_rmb();
+      //what is going on here?
       struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
       //printk(KERN_INFO "%d\n", strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6));
       if(!strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6)){
@@ -53,12 +54,12 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
         char next_char = *(buffer_info ->rxbuf.data + j);
         printk(KERN_INFO "0x%x\n", next_char & 0xff);
       }*/
-
+  next:
       i = (++i%rx_ring->count);
       rx_desc = E1000_RX_DESC(*rx_ring, i);
 	    buffer_info = &rx_ring->buffer_info[i];
     } 
-    printk(KERN_INFO "End");
+    //printk(KERN_INFO "End");
     
     //return 0;
   return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
@@ -118,7 +119,7 @@ int init_module(void)
   }
 
 
-  printk("MTU: %u\n", nd -> mtu);
+  printk(KERN_INFO "MTU: %u\n", nd -> mtu);
   e1000 = get_e1000_adapter(nd);
 
   
@@ -127,12 +128,24 @@ int init_module(void)
     return 0;
   }
 
-  printk("RX Rings: %d\n", e1000 ->num_rx_queues);
+  printk(KERN_INFO "RX Rings: %d\n", e1000 ->num_rx_queues);
 
+  printk(KERN_INFO "Max rx desc size: %d\n", e1000->rx_buffer_len); 
+  
+  /* <- rx_buffer_len is 1522 bytes. This is
+   * best explained here: https://serverfault.com/questions/422158/what-is-the-in-the-wire-size-of-a-ethernet-frame-1518-or-1542
+   * In summary, the e1000 adapter strips certain "hardware" dependent parts of the eth frame such as the preamble and
+   * the SFD or start-frame-delimeter. This leaves us with the SRC (6) + DST (6) + VLAN (4) + LEN (2) + CRC (4) + [payload] (1500 bytes) = 1522
+   *
+   * Another good description of this can be found on the wikipedia for an 802.3 frame: https://en.wikipedia.org/wiki/Ethernet_frame#Structure
+   * As you can see, if we strip off the preamble, sfd, and interpacket gap, we get 1522. Note that this is only in the case of a 
+   * standard frame. This changes in the case of a jumbo frame. 
+   */
 
+   
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
-  e1000->clean_rx = new_clean_rx; 
+  e1000->clean_rx = e1000_clean_rx_irq; 
 
 
   printk(KERN_INFO "clean_rx replaced\n");
