@@ -235,10 +235,17 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 
 			//printk("Didn't copybreak. Copybreak: %d, Length: %d, Frag Len: %d", copybreak, length, frag_len);	
 			skb = build_skb(data - E1000_HEADROOM, frag_len);
-			//
+			
+		
+			
+
+			
 			/*
 			Upon building the SKB, we get the following state:
 			This information can be found in build_skb -> __build_skb -> __build_skb_around
+
+			NOTE: skb->tail is an offset (unsigned int) in this case. At the time of build_skb, skb->tail is 0.
+
 			head --> data --> tail --> ___________________________
 									   |						  |
 									   |						  |
@@ -254,23 +261,62 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 									   |True length: rx_desc ->len|
 									   |Max length: frag_len(1522)|
 									   |						  |
-									   |__________________________|
+								end -->|__________________________|
 									   |						  |
 									   |						  |
 									   |  sizeof(skb_shared_info) |
 									   |						  |
 									   |						  |
-								end--> |__________________________|
+								       |__________________________|
 					
 			
 			*/
+
+
 
 			if (!skb) {
 				adapter->alloc_rx_buff_failed++;
 				break;
 			}
+			
+			
 
 			skb_reserve(skb, E1000_HEADROOM);
+
+			/*
+			State after the reserve. At this point data > head and data - head == tail == E1000_HEADROOM == 64
+		
+
+							 head -->  ___________________________
+									   |						  |
+									   |						  |
+									   | E1000_HEADROOM (64 bytes)|
+									   |						  |
+									   |						  |
+			         data --> tail --> |__________________________|
+									   |						  |
+									   |						  |
+									   |						  |
+									   |						  |
+									   |	Actual data			  |
+									   |True length: rx_desc ->len|
+									   |Max length: frag_len(1522)|
+									   |						  |
+								end -->|__________________________|
+									   |						  |
+									   |						  |
+									   |  sizeof(skb_shared_info) |
+									   |						  |
+									   |						  |
+								       |__________________________|
+					
+			
+			*/
+
+			//printk("data-head: %ld, tail: %d", (long)(skb->data-skb->head), skb->tail);
+			printk("end: %d", skb->end); //for some reason this is 1600. Idk where the extra 14 bytes came from. These 14 extra bytes came from aligning it to a cacheline (64 bytes) 
+			
+
 			dma_unmap_single(&pdev->dev, buffer_info->dma,
 					 adapter->rx_buffer_len,
 					 DMA_FROM_DEVICE);
@@ -341,9 +387,45 @@ process_skb:
 			length -= 4;
 
 		if (buffer_info->rxbuf.data == NULL) //not copybreak skb. Note the last line in the !skb block
-			skb_put(skb, length); 
+			skb_put(skb, length); //skb_put advances the tail section by length (desc -> length)
 		else /* copybreak skb */
 			skb_trim(skb, length);
+
+		printk("Packet length: %ld, %d", skb->tail - (skb->data - skb->head), length);
+
+		/*
+		State after the skb_put:
+
+		
+							 head -->  ___________________________
+									   |						  |
+									   |						  |
+									   | E1000_HEADROOM (64 bytes)|
+									   |	ALL 0 bytes			  |
+									   |						  |
+			                 data -->  |__________________________|
+									   |						  |
+									   |	Packet data			  |
+									   |	Size: desc->length	  |
+									   |						  |
+						     tail -->  |__________________________|
+									   |						  |
+									   |	Remaing,unused 		  |
+									   |	portion of MTU		  |
+									   |	All 0 bytes			  |
+								end -->|__________________________|
+									   |						  |
+									   |						  |
+									   |						  |
+									   |  sizeof(skb_shared_info) |
+									   |						  |
+									   |						  |
+								       |__________________________|
+		
+
+		More specifically, (tail) - (data-head) == rx_desc -> length. Remember tail is an offset from head not data. 
+		
+		*/
 
 
 
