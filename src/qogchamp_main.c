@@ -36,11 +36,11 @@ bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, 
       //printk(KERN_INFO "start %d, i: %d", start, i);
       //dma_rmb();
       //what is going on here?
-      struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
+     /* struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
       //printk(KERN_INFO "%d\n", strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6));
       if(!strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6)){
         memset(buffer_info->rxbuf.data, 0x0, rx_desc->length);
-      }
+      }*/
       
 
 
@@ -142,7 +142,7 @@ int init_module(void)
    * standard frame. This changes in the case of a jumbo frame. 
    */
 
-   
+
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
   e1000->clean_rx = e1000_clean_rx_irq; 

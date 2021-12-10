@@ -18,9 +18,13 @@ unsigned int copybreak __read_mostly = COPYBREAK_DEFAULT;
 
 #define E1000_HEADROOM (NET_SKB_PAD + NET_IP_ALIGN)
 unsigned int e1000_frag_len(const struct e1000_adapter *a)
-{
+{	
+	//SKB_DATA_ALIGN will align the size to the next cacheline boundry which, in the case of x86 is 64 bytes.
+	//This is easily calculated as (a->rx_buffer_len + E1000_HEADROOM) + 64 - ((a->rx_buffer_len + E1000_HEADROOM) % 64)
 	return SKB_DATA_ALIGN(a->rx_buffer_len + E1000_HEADROOM) +
-		SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+		SKB_DATA_ALIGN(sizeof(struct skb_shared_info)); 
+		//this, in the case of standard rx frame size (1522 bytes) will result in 1920 bytes
+		//with 1600 bytes reserved for headroom and the actual buffer and 320 bytes reserved for the skb_shared_info struct
 }
 
 void e1000_tbi_adjust_stats(struct e1000_hw *hw, struct e1000_hw_stats *stats, u32 frame_len, const u8 *mac_addr)
@@ -111,13 +115,52 @@ bool e1000_tbi_should_accept(struct e1000_adapter *adapter, u8 status, u8 errors
 
 void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, struct sk_buff *skb)
 {
-	skb->protocol = eth_type_trans(skb, adapter->netdev);
+	int i;
+	//printk(KERN_INFO "skb length: %d", skb->len);
+	struct ethhdr* hdr = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
+	skb->protocol = eth_type_trans(skb, adapter->netdev); 
+
+
+	//actually cutting off things
+	if(!strncmp(hdr->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
+		dev_kfree_skb(skb); //free the skb. Don't slab cache space because that would be cringe
+		return;
+	}
+
+	//eth_type_trans "pops" the ethernet header via skb_pull_inline. So, get it now or hold your peace ig
+	//In reality what does this is add ETH_HLEN (Length of an ethernet header) to skb->head and decrements the size
+	
+	
+	/**
+	It is immensely important to note that eth_type_trans not only sets the protocol, but also sets up the skb->mac_header. So, we can use skb->data to access the mac header
+	*/
+	
+
+
+	/*printk(KERN_INFO "Protocol: %x", be16_to_cpu(skb->protocol)); //protocol is big endian, so convert it back
+	//printk(KERN_INFO "MAC offset: %d", skb->mac_header);
+	printk(KERN_INFO "SRC Addr:");
+	for(i = 0; i<ETH_ALEN; i++){
+		printk(KERN_CONT "0x%x ", hdr->h_source[i] % 0xff);
+	}
+	printk(KERN_INFO "Dest Addr: ");
+	for(i = 0; i<ETH_ALEN; i++){
+		printk(KERN_CONT "0x%x ", hdr->h_dest[i] % 0xff);
+	}
+	
+
+	printk(KERN_INFO "Raw: ");
+	for(i = 0; i<12; i++){
+		printk(KERN_CONT "0x%x ", skb->data[i] % 0xff);
+	}
+	printk(KERN_INFO "__________________");*/
 	if (status & E1000_RXD_STAT_VP) {
 		u16 vid = le16_to_cpu(vlan) & E1000_RXD_SPC_VLAN_MASK;
 
 		__vlan_hwaccel_put_tag(skb, htons(ETH_P_8021Q), vid);
 	}
+
 	napi_gro_receive(&adapter->napi, skb);
 }
 
@@ -221,7 +264,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 
 		data = buffer_info->rxbuf.data;
 		prefetch(data);
-
+		
 		
 		skb = e1000_copybreak(adapter, buffer_info, length, data); //copybreak is a method that is used for small frames. 
 		if (!skb) {
@@ -234,9 +277,9 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 
 
 			//printk("Didn't copybreak. Copybreak: %d, Length: %d, Frag Len: %d", copybreak, length, frag_len);	
-			skb = build_skb(data - E1000_HEADROOM, frag_len);
-			
-		
+			skb = build_skb(data - E1000_HEADROOM, frag_len); //remember we start by decrementing
+			//printk(KERN_INFO "frag len: %d\n", frag_len);
+			//printk(KERN_INFO "Aligned size: %d, Unaligned size: %d\n", SKB_DATA_ALIGN(adapter->rx_buffer_len + E1000_HEADROOM), adapter->rx_buffer_len + E1000_HEADROOM);
 			
 
 			
@@ -245,6 +288,9 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 			This information can be found in build_skb -> __build_skb -> __build_skb_around
 
 			NOTE: skb->tail is an offset (unsigned int) in this case. At the time of build_skb, skb->tail is 0.
+
+			Remember, we start by decrementing data by E1000_HEADROOM which puts head, data, and tail E1000_HEADROOM
+			bytes before the actual data of the packet. 
 
 			head --> data --> tail --> ___________________________
 									   |						  |
@@ -259,7 +305,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 									   |						  |
 									   |	Actual data			  |
 									   |True length: rx_desc ->len|
-									   |Max length: frag_len(1522)|
+									   |Max length: 1600 bytes    |
 									   |						  |
 								end -->|__________________________|
 									   |						  |
@@ -281,11 +327,14 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 			
 			
 
-			skb_reserve(skb, E1000_HEADROOM);
+			skb_reserve(skb, E1000_HEADROOM); 
+			//reserve advances data and tail E1000_HEADROOM bytes.
+			//The purpose of this is to allow some space between the data and the head
+			
 
 			/*
-			State after the reserve. At this point data > head and data - head == tail == E1000_HEADROOM == 64
-		
+			State of the skb after the reserve. At this point data > head and data - head == tail == E1000_HEADROOM == 64
+				At this point skb->len is 0
 
 							 head -->  ___________________________
 									   |						  |
@@ -300,7 +349,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 									   |						  |
 									   |	Actual data			  |
 									   |True length: rx_desc ->len|
-									   |Max length: frag_len(1522)|
+									   |Max length: 1600 bytes    |
 									   |						  |
 								end -->|__________________________|
 									   |						  |
@@ -314,7 +363,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 			*/
 
 			//printk("data-head: %ld, tail: %d", (long)(skb->data-skb->head), skb->tail);
-			printk("end: %d", skb->end); //for some reason this is 1600. Idk where the extra 14 bytes came from. These 14 extra bytes came from aligning it to a cacheline (64 bytes) 
+			//printk(KERN_INFO "end: %d", skb->end-skb->tail); //for some reason this is 1600. Idk where the extra 14 bytes came from. These 14 extra bytes came from aligning it to a cacheline (64 bytes) 
 			
 
 			dma_unmap_single(&pdev->dev, buffer_info->dma,
@@ -377,7 +426,8 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 		}
 
 process_skb:
-		total_rx_bytes += (length - 4); /* don't count FCS */
+		//TODO: Don't keep a record in total_rx_bytes
+		total_rx_bytes += (length - 4); /* don't count FCS */ 
 		total_rx_packets++;
 
 		if (likely(!(netdev->features & NETIF_F_RXFCS)))
@@ -391,11 +441,18 @@ process_skb:
 		else /* copybreak skb */
 			skb_trim(skb, length);
 
-		printk("Packet length: %ld, %d", skb->tail - (skb->data - skb->head), length);
+		//printk("Packet length: %ld, %d", skb->tail - (skb->data - skb->head), length);
 
+		//printk(KERN_INFO "Aligned size: %ld\n", SKB_DATA_ALIGN(sizeof(struct skb_shared_info)));
+		
+
+		
 		/*
 		State after the skb_put:
 
+		As is evident by this series of diagrams, the gap between head and data is for haedroom, the gap between data and tail is for
+		packet ddata and the gap between tail and end is for the remaining, unused part of the MTU.
+			At this point skb->len is equal to desc->length or tail - (data-head)
 		
 							 head -->  ___________________________
 									   |						  |
@@ -423,7 +480,7 @@ process_skb:
 								       |__________________________|
 		
 
-		More specifically, (tail) - (data-head) == rx_desc -> length. Remember tail is an offset from head not data. 
+		More specifically, skb->len == (tail) - (data-head) == rx_desc -> length. Remember tail is an offset from head not data and data/head are pointers 
 		
 		*/
 
@@ -435,7 +492,7 @@ process_skb:
 				  ((u32)(rx_desc->errors) << 24),
 				  le16_to_cpu(rx_desc->csum), skb);
 
-		e1000_receive_skb(adapter, status, rx_desc->special, skb);
+		e1000_receive_skb(adapter, status, rx_desc->special, skb); //send it up the network stack.
 
 next_desc:
 		rx_desc->status = 0;

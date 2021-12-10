@@ -41,3 +41,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/byteorder/generic.h>
 #include <linux/etherdevice.h>
 #include <linux/if_vlan.h>
+#include <linux/if_ether.h>
