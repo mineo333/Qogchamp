@@ -22,13 +22,14 @@ Random notes:
 
 
 struct pci_dev* find_pci(const char* d_name, int size){ 
-    struct pci_dev* d; 
-    printk(KERN_INFO "Starting find_pci with %s\n", d_name); //for some reason this function will die if this line is not here
+    volatile struct pci_dev* d = NULL; 
+   // printk(KERN_INFO "Starting find_pci with %s\n", d_name); //for some reason this function will die if this line is not here
+    const char* d_name_r = READ_ONCE(d_name);
+
     for_each_pci_dev(d){ //macro in pci.h
         if(!d -> driver || !(d -> driver -> name))
             continue;
-        //printk(KERN_INFO "Found device: %s\n", d->driver->name);
-        if(!strncmp(d->driver->name, d_name, size))
+        if(!strncmp(d->driver->name, d_name_r, size)) 
             return d;
         
         
@@ -48,7 +49,9 @@ void enumerate_pci(void){
     }
 }
 const char* get_pci_name(struct pci_dev* pd){ //this gets the "true name" - the name of the driver. It can be considered the common name
-    if(!pd -> driver){
+    
+    
+    if(!pd || !pd -> driver){
         return NULL;
     }
     return pd->driver->name;

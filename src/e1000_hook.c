@@ -124,12 +124,12 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
 
 	//actually cutting off things
 	if(!strncmp(hdr->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
-		dev_kfree_skb(skb); //free the skb. Don't slab cache space because that would be cringe
+		dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe
 		return;
 	}
 
 	//eth_type_trans "pops" the ethernet header via skb_pull_inline. So, get it now or hold your peace ig
-	//In reality what does this is add ETH_HLEN (Length of an ethernet header) to skb->head and decrements the size
+	//In reality what does this is add ETH_HLEN (Length of an ethernet header) to skb->data and decrements the size
 	
 	
 	/**

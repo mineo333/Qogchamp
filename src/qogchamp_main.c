@@ -154,8 +154,8 @@ int init_module(void)
 }
 void cleanup_module(void)
 {
-
-  e1000->clean_rx = old_clean_rx;
+  if(e1000)
+    e1000->clean_rx = old_clean_rx;
   //replace_page(new_opcode, old_opcode);
   //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
 
