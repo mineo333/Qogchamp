@@ -42,3 +42,6 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/etherdevice.h>
 #include <linux/if_vlan.h>
 #include <linux/if_ether.h>
+#include <linux/memcontrol.h>
+#include <linux/ip.h>
+#include <linux/udp.h>

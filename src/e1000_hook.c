@@ -3,6 +3,10 @@
 #include "e1000_osdep.h"
 #include "networking.h"
 
+
+#define IP_HLEN sizeof(struct iphdr)
+#define UDP_HLEN sizeof(struct udphdr)
+
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
 }
@@ -116,17 +120,23 @@ bool e1000_tbi_should_accept(struct e1000_adapter *adapter, u8 status, u8 errors
 void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, struct sk_buff *skb)
 {
 	int i;
+	struct iphdr* ip;
+	struct udphdr* udp;
+	char* true_data;
 	//printk(KERN_INFO "skb length: %d", skb->len);
-	struct ethhdr* hdr = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
+	struct ethhdr* eth = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
 	skb->protocol = eth_type_trans(skb, adapter->netdev); 
-
-
+	ip = (struct iphdr*)skb->data;
+	udp = (struct udphdr*)(skb->data + IP_HLEN);
+	true_data = (char*)(skb->data + +IP_HLEN + UDP_HLEN);
 	//actually cutting off things
-	if(!strncmp(hdr->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
-		dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe
+	if(!strncmp(eth->h_source, "\x8c\x85\x90\x3c\x28\x01", 6) && be16_to_cpu(udp->dest) == 42069){
+		printk(KERN_INFO "data: %s\n", true_data);
+		dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
 		return;
 	}
+
 
 	//eth_type_trans "pops" the ethernet header via skb_pull_inline. So, get it now or hold your peace ig
 	//In reality what does this is add ETH_HLEN (Length of an ethernet header) to skb->data and decrements the size
@@ -137,24 +147,6 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
 	*/
 	
 
-
-	/*printk(KERN_INFO "Protocol: %x", be16_to_cpu(skb->protocol)); //protocol is big endian, so convert it back
-	//printk(KERN_INFO "MAC offset: %d", skb->mac_header);
-	printk(KERN_INFO "SRC Addr:");
-	for(i = 0; i<ETH_ALEN; i++){
-		printk(KERN_CONT "0x%x ", hdr->h_source[i] % 0xff);
-	}
-	printk(KERN_INFO "Dest Addr: ");
-	for(i = 0; i<ETH_ALEN; i++){
-		printk(KERN_CONT "0x%x ", hdr->h_dest[i] % 0xff);
-	}
-	
-
-	printk(KERN_INFO "Raw: ");
-	for(i = 0; i<12; i++){
-		printk(KERN_CONT "0x%x ", skb->data[i] % 0xff);
-	}
-	printk(KERN_INFO "__________________");*/
 	if (status & E1000_RXD_STAT_VP) {
 		u16 vid = le16_to_cpu(vlan) & E1000_RXD_SPC_VLAN_MASK;
 

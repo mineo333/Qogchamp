@@ -5,6 +5,8 @@ TBH this is hardly for address_space anymore and is more of a series of wrapper 
 
 TODO: Replace previous ptes with new pte
 
+TODO: Use page macros such as PAGE_ALIGN and shit like that 
+
 */
 
 
@@ -90,14 +92,27 @@ void insert_page(struct inode* i, unsigned long bs_off, struct page* page){ //re
 
 }
 
+
+//the page should be locked before this functions is called. Use replace_page instead as it locks the pages for you :)
+
+
+/*
+This function replaces the page old with the page new in old's page cache. 
+
+*/
 void replace_page(struct page* old, struct page* new){
   lock_page(old);
-  lock_page(new); //replace_page_cache_page requires the pages to be locked.
-  replace_page_cache_page(old,new);
+  lock_page(new); //replace_page_cache_page requires the pages to be locked. The old ptes also need to be removed
+
+  replace_page_cache_page(old, new);
+
+
   unlock_page(old);
   unlock_page(new);
-  lru_cache_add(new);
+  
 }
+
+
 
 
 /*
@@ -119,7 +134,10 @@ void fuckery(struct inode* i, unsigned long bs_off){ //testing ground
   //printk("New page ref: %d\n", page_ref_count(new_page));
 }
 
+/*
+bs_off is the number of bytes into the page cache
 
+*/
 //The reason we use double-pointers for new_page and old_page is so that we can "return" them to the caller
 void write_string_page_cache(struct inode* i, unsigned long bs_off, const char* buf, int len, struct page** new_page, struct page** old_page){
   char* new_page_ptr;
@@ -143,11 +161,11 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, const char* 
 
  
   
-  new_page_ptr = kmap(*new_page);
+  new_page_ptr = kmap(*new_page); 
   old_page_ptr = kmap(*old_page);
-  memcpy(new_page_ptr, old_page_ptr, 4096); 
+  memcpy(new_page_ptr, old_page_ptr, 4096); //copy contents of old page to new page
 
-  for(count = 0, ptr = new_page_ptr + pg_off(bs_off); count<len; count++, ptr++){
+  for(count = 0, ptr = new_page_ptr + pg_off(bs_off); count<len; count++, ptr++){ //replace the string
     *ptr = *(buf+count);
   }
   kunmap(*new_page);

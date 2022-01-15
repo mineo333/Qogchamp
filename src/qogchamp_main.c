@@ -25,46 +25,6 @@ struct e1000_adapter* e1000;
 bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do);
 //old_clean_rx is always e1000_clean_rx_irq if we are using standard sized frames
 
-bool new_clean_rx(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do){
-  //KEEP IN MIND THAT THIS CODE IS RUNNING IN INTERRUPT CONTEXT
-  int i = rx_ring -> next_to_clean;
-  struct e1000_rx_desc *rx_desc = E1000_RX_DESC(*rx_ring, i);
-  struct e1000_rx_buffer *buffer_info = &rx_ring->buffer_info[i];
-
-
-  while(rx_desc->status & E1000_RXD_STAT_DD){
-      //printk(KERN_INFO "start %d, i: %d", start, i);
-      //dma_rmb();
-      //what is going on here?
-     /* struct eth_frame* frame = (struct eth_frame*)buffer_info->rxbuf.data;
-      //printk(KERN_INFO "%d\n", strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6));
-      if(!strncmp(frame->src, "\x8c\x85\x90\x3c\x28\x01", 6)){
-        memset(buffer_info->rxbuf.data, 0x0, rx_desc->length);
-      }*/
-      
-
-
-      //memset(buffer_info->rxbuf.data, 0x0, rx_desc->length); //lmao
-
-    //removing debugging information is important to to have zero all buffers. IDK why this is. It might have something to do with 
-    
-     /* printk(KERN_INFO "_____________________________\n");
-      int j = 0;
-      for(; j<rx_desc -> length; j++){
-        char next_char = *(buffer_info ->rxbuf.data + j);
-        printk(KERN_INFO "0x%x\n", next_char & 0xff);
-      }*/
-  next:
-      i = (++i%rx_ring->count);
-      rx_desc = E1000_RX_DESC(*rx_ring, i);
-	    buffer_info = &rx_ring->buffer_info[i];
-    } 
-    //printk(KERN_INFO "End");
-    
-    //return 0;
-  return old_clean_rx(adapter, rx_ring, work_done, work_to_do); //LULW
-}
-
 
 
 const char* troll = "trolled";
@@ -146,7 +106,9 @@ int init_module(void)
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
   e1000->clean_rx = e1000_clean_rx_irq; 
-
+  if(sizeof(struct ethhdr) == ETH_HLEN){
+    printk(KERN_INFO "SAME\n");
+  }
 
   printk(KERN_INFO "clean_rx replaced\n");
 

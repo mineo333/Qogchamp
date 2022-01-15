@@ -22,7 +22,7 @@ Random notes:
 
 
 struct pci_dev* find_pci(const char* d_name, int size){ 
-    volatile struct pci_dev* d = NULL; 
+    struct pci_dev* d = NULL; 
    // printk(KERN_INFO "Starting find_pci with %s\n", d_name); //for some reason this function will die if this line is not here
     const char* d_name_r = READ_ONCE(d_name);
 
