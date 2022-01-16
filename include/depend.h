@@ -45,3 +45,5 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/memcontrol.h>
 #include <linux/ip.h>
 #include <linux/udp.h>
+#include <linux/init.h>
+#include <linux/kmod.h>

