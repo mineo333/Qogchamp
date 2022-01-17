@@ -294,26 +294,26 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
             bytes before the actual data of the packet. 
 
             head --> data --> tail --> ___________________________
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        | E1000_HEADROOM (64 bytes)|
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |__________________________|
-                                       |						  |
-                                       |						  |
-                                       |						  |
-                                       |						  |
-                                       |	Actual data			  |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |   Actual data            |
                                        |True length: rx_desc ->len|
                                        |Max length: 1600 bytes    |
-                                       |						  |
+                                       |                          |
                                 end -->|__________________________|
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |  sizeof(skb_shared_info) |
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |__________________________|
                     
             
@@ -338,26 +338,26 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
                 At this point skb->len is 0
 
                              head -->  ___________________________
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        | E1000_HEADROOM (64 bytes)|
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                      data --> tail --> |__________________________|
-                                       |						  |
-                                       |						  |
-                                       |						  |
-                                       |						  |
-                                       |	Actual data			  |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |    Actual data           |
                                        |True length: rx_desc ->len|
                                        |Max length: 1600 bytes    |
-                                       |						  |
+                                       |                          |
                                 end -->|__________________________|
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |  sizeof(skb_shared_info) |
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |__________________________|
                     
             
@@ -456,28 +456,28 @@ process_skb:
             At this point skb->len is equal to desc->length or tail - (data-head)
         
                              head -->  ___________________________
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        | E1000_HEADROOM (64 bytes)|
-                                       |	ALL 0 bytes			  |
-                                       |						  |
+                                       |	ALL 0 bytes           |
+                                       |                          |
                              data -->  |__________________________|
-                                       |						  |
-                                       |	Packet data			  |
-                                       |	Size: desc->length	  |
-                                       |						  |
+                                       |                          |
+                                       |    Packet data           |
+                                       |   Size: desc->length     |
+                                       |                          |
                              tail -->  |__________________________|
-                                       |						  |
-                                       |	Remaing,unused 		  |
-                                       |	portion of MTU		  |
-                                       |	All 0 bytes			  |
+                                       |                          |
+                                       |    Remaing,unused        |
+                                       |    portion of MTU        |
+                                       |    All 0 bytes           |
                                 end -->|__________________________|
-                                       |						  |
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
+                                       |                          |
                                        |  sizeof(skb_shared_info) |
-                                       |						  |
-                                       |						  |
+                                       |                          |
+                                       |                          |
                                        |__________________________|
         
 
