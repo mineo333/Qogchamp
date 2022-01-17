@@ -2,6 +2,11 @@
 #include "taskutil.h"
 MODULE_LICENSE("GPL");
 
+
+/*
+Convert to usage of standard page macros that already exist in the kernel
+*/
+
 void read_string(char* kmaddr, char* dest, unsigned long laddr){ //reads string from kmapped page
 	strncpy(dest, return_true_addr(kmaddr, laddr),PATH_MAX);
 }

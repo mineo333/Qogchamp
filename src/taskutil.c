@@ -154,7 +154,7 @@ DON'T FUCKING USE THIS FUNCTION. IT IS AWFUL
 
 struct task_struct* wait_task(char* name, size_t len){
 	struct task_struct *task_ret;
-	do{ //fuck it busy loop. I tried implementing a wait queue but idk how to wake it up properly. Someone dm if they know tho.
+	do{ //To not use a busy loop it might be worth considering spawning another kernel thread or queueing work. 
 		task_ret = search_task(name, len);
 	}while(task_ret == NULL);
 
