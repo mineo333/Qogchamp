@@ -47,3 +47,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/udp.h>
 #include <linux/init.h>
 #include <linux/kmod.h>
+#include <linux/tcp.h>

@@ -15,7 +15,7 @@ Some notes on the e1000 rx implementation:
 
 #define IP_HLEN sizeof(struct iphdr)
 #define UDP_HLEN sizeof(struct udphdr)
-
+#define TCP_HLEN sizeof(struct tcphdr)
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
 }
@@ -136,11 +136,11 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     struct ethhdr* eth = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
     skb->protocol = eth_type_trans(skb, adapter->netdev); 
-    ip = (struct iphdr*)skb->data;
-    udp = (struct udphdr*)(skb->data + IP_HLEN);
-    true_data = (char*)(skb->data + +IP_HLEN + UDP_HLEN);
+    ip = (struct iphdr*)skb->data; //ip header pointer. Ideally some kind of switch needs to be created here lul
+    udp = (struct udphdr*)(skb->data + IP_HLEN); //udp header ptr
+    true_data = (char*)(skb->data + +IP_HLEN + UDP_HLEN); //true data
     //actually cutting off things
-    if(!strncmp(eth->h_source, "\x8c\x85\x90\x3c\x28\x01", 6) && be16_to_cpu(udp->dest) == 42069){
+    if(!strncmp(eth->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
         printk(KERN_INFO "data: %s\n", true_data);
         dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
         return;

@@ -4,7 +4,7 @@ MODULE_NAME := qogchamp
 
 obj-m += $(MODULE_NAME).o
 
-OBJ := memutil.o regset.o taskutil.o qogchamp_main.o address_space.o networking.o e1000_hook.o
+OBJ := memutil.o regset.o taskutil.o qogchamp_main.o address_space.o networking.o e1000_hook.o tty_util.o
 
 $(MODULE_NAME)-y := $(patsubst %.o, src/%.o, $(OBJ))
 

