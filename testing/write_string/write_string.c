@@ -7,18 +7,20 @@
 #include <fcntl.h>
 
 int fd_stdin, fd_stdout, fd_stderr;
-
+char* qogchamp = "qogchamp";
 int main(int argc, char** argv){
 
 
    
-    FILE* fd = fopen("tfile", "a");
-    int pt = open("/dev/ptmx", O_RDWR | O_CLOEXEC);
-    printf("%d\n", pt);
-    fprintf(fd, "pt fd: %d\n", pt);
+    //FILE* fd = fopen("tfile", "a");
+    int pt = open("/dev/qogchamp", O_WRONLY);
+    
 
+    if(pt >= 0){
+      write(pt, qogchamp, strlen(qogchamp));
+    }
 
-    char* buf = malloc(1024);
+    /*char* buf = malloc(1024);
 
 
     int ret = read(pt, buf, 1024);
@@ -28,5 +30,5 @@ int main(int argc, char** argv){
       fprintf(fd,"string:%s, size: %d\n", buf, ret);
     //for(int i = 0; i<argc; i++){
       //write(fd, *(argv+i), strlen(*(argv+i)));
-    //}
+    //}*/
 }

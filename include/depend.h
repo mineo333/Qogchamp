@@ -2,6 +2,9 @@
 This file contains all the system dependcies because I'm lazy and the project looks better this way. Every system header file should include this file.
 */
 
+
+
+
 #include <linux/module.h>	/* Needed by all modules */
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
 #include <linux/types.h>
@@ -48,3 +51,4 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/init.h>
 #include <linux/kmod.h>
 #include <linux/tcp.h>
+#include <linux/cdev.h>

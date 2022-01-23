@@ -8,16 +8,22 @@
 
 struct qtty qtty;
 
-int qtty_write(struct file* f, const char* const char __user * buf, size_t size, loff_t* off){
-    char kbuf[size];
-
+ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
+    printk(KERN_INFO "WRITING\n");
+    char* kbuf = (char*)kzalloc(size+1, GFP_KERNEL); //make sure the string actually terminates so add 1 
     if(!access_ok(buf, size)){
-        return -EFAULT;
+        return -EINVAL;
     }
 
-    if(copy_from_user(kbuf, buf, size)){
+    if(copy_from_user(kbuf, buf, size)){ //copy_from_user returns 0
         return -EFAULT; //invalid buffer
     }
+    
+    printk(KERN_INFO "%s\n", kbuf);
+    
+    return size;
+
+
 
     
 }
@@ -27,26 +33,51 @@ int qtty_open(struct inode* i, struct file* f){
     return 0;
 }
 
-const struct file_operations qtty_fops{
-    .open = qtty_open;
-    .write = qtty_write
+const struct file_operations qtty_fops = {
+    .open = qtty_open,
+    .write = qtty_write,
+    .owner = THIS_MODULE
 };
 
 
 
-void init_qtty(){ //init dev
-    int i, err;
-    err = register_chrdev_region(MKDEV(QTTY_MAJOR, 0), QTTY_MINOR, "qogchamp");//reverse major and minor numbers for use.
-    if(!err){
+void init_qtty(void){ //init dev
+    int err;
+    err = register_chrdev_region(MKDEV(QTTY_MAJOR, QTTY_MINOR), DEV_COUNT , "qogchamp");//reverse major and minor numbers for use.
+    
+    if(err){
         printk(KERN_INFO "Failed to reserve major and minor numbers");
-        return NULL;
+        return;
     }
     
-    cdev_init(&qtty.cdev, &qtty_fops);
-    cdev_add(&qtty.cdev, MKDEV(QTTY_MAJOR, QTTY_MINOR), 1);
     
+    cdev_init(&qtty.cdev, &qtty_fops);
+    err = cdev_add(&qtty.cdev, MKDEV(QTTY_MAJOR, QTTY_MINOR), 1);
+    qtty.cdev.owner = THIS_MODULE;
+    printk(KERN_INFO "error: %d\n", err);
+    if(err){
+        qtty.cdev.owner = NULL;
+        printk(KERN_INFO "cdev could not be added\n");
+
+    }
 
     
+}
+
+void qtty_clean_up(void){
+    
+   
+    unregister_chrdev_region(MKDEV(QTTY_MAJOR, QTTY_MINOR), DEV_COUNT);
+    
+    if(!qtty.cdev.owner){
+        printk(KERN_INFO "qtty not initialized\n");
+        return;
+    }
+
+
+    cdev_del(&qtty.cdev);
+
+
 }
 
 

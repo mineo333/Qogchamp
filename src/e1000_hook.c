@@ -141,7 +141,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     true_data = (char*)(skb->data + +IP_HLEN + UDP_HLEN); //true data
     //actually cutting off things
     if(!strncmp(eth->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
-        printk(KERN_INFO "data: %s\n", true_data);
+       // printk(KERN_INFO "data: %s\n", true_data);
         dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
         return;
     }

