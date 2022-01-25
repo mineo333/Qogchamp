@@ -12,13 +12,15 @@ int main(int argc, char** argv){
 
 
    
-    //FILE* fd = fopen("tfile", "a");
-    int pt = open("/dev/qogchamp", O_WRONLY);
+    FILE* fd = fopen("tfile", "a");
+  //  int pt = open("/dev/qogchamp", O_WRONLY);
     
-
-    if(pt >= 0){
-      write(pt, qogchamp, strlen(qogchamp));
+    fprintf(fd,"made it into the function\n");
+    int err = write(1, qogchamp, strlen(qogchamp));
+    if(err < 0){
+      fprintf(fd,"errno: %d\n", errno);
     }
+    fprintf(fd,"made it past the write\n");
 
     /*char* buf = malloc(1024);
 
@@ -27,7 +29,7 @@ int main(int argc, char** argv){
     if(ret < 0)
       fprintf(fd,"errno: %d\n", errno);
     else
-      fprintf(fd,"string:%s, size: %d\n", buf, ret);
+      
     //for(int i = 0; i<argc; i++){
       //write(fd, *(argv+i), strlen(*(argv+i)));
     //}*/

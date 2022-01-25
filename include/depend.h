@@ -52,3 +52,11 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/kmod.h>
 #include <linux/tcp.h>
 #include <linux/cdev.h>
+#include <linux/rwlock.h>
+#include <asm-generic/atomic-long.h>
+#include <linux/spinlock.h>
+#include <linux/mutex.h>
+#include <linux/file.h>
+#include <uapi/asm-generic/fcntl.h>
+#include <linux/cred.h>
+#include <linux/rcupdate.h>

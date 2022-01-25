@@ -79,10 +79,12 @@ void print_fds(struct task_struct* task){
 	struct fdtable*  fdt;
 	struct file** fd;
 	if(!files){
+		printk(KERN_INFO "No files\n");
 		return; //no file struct
 	}
 	fdt = files->fdt;
 	if(!fdt){
+		printk(KERN_INFO "no fdt\n");
 		return;
 	}
 	fd = fdt -> fd;
