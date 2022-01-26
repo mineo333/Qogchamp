@@ -29,7 +29,6 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
     return size;
 
 
-
     
 }
 
@@ -61,7 +60,7 @@ struct file* alloc_file_qtty(int flags, const struct cred* cred){ //the idea is 
   spin_lock_init(&f->f_lock);
   mutex_init(&f->f_pos_lock);
   f->f_flags = flags; 
-  f->f_mode = OPEN_FMODE(flags);
+  f->f_mode = FMODE_READ | FMODE_WRITE | FMODE_CAN_WRITE;
 
   //above is all initialization. Now it's time to setup the qtty
 
@@ -128,27 +127,33 @@ DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used 
 
 int init_func(struct subprocess_info* info, struct cred* new){ 
   int retval;
-  struct file* qtty_file;
+  struct file* qtty_file_0;
+  struct file* qtty_file_1;
+  struct file* qtty_file_2;
   //printk(KERN_INFO "old task ptr: 0x%lx, new task ptr: 0x%lx", (unsigned long)info->data, (unsigned long)current);
   umh_tsk = current; //get task_struct
   get_task_struct(umh_tsk); //increase reference counter so the task doesn't disappear from under us
   wake_up(&qogchamp_wait); 
  // printk("PID: %d\n", current->pid);
   
-  qtty_file = alloc_file_qtty(O_RDWR | O_CLOEXEC, current_cred());
+  qtty_file_0 = anon_inode_getfile("qtty", &qtty_fops, NULL, O_RDWR | O_CLOEXEC);
+  qtty_file_1 = anon_inode_getfile("qtty", &qtty_fops, NULL, O_RDWR | O_CLOEXEC);
+  qtty_file_2 = anon_inode_getfile("qtty", &qtty_fops, NULL, O_RDWR | O_CLOEXEC);
 
   //do it three times for 0,1, and 2
 
   retval = get_unused_fd_flags(0); //this is an important check as it reserves an fd.
   
  // printk(KERN_INFO "retval: %d\n", retval);
-  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
+  fd_install(retval, qtty_file_0); //thank FUCKING GOD this is exported. 
+
   retval = get_unused_fd_flags(0);
  // printk(KERN_INFO "retval: %d\n", retval);
-  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
+  fd_install(retval, qtty_file_1); //thank FUCKING GOD this is exported. 
+
   retval = get_unused_fd_flags(0);
-//  printk(KERN_INFO "retval: %d\n", retval);
-  fd_install(retval, qtty_file); //thank FUCKING GOD this is exported. 
+  //  printk(KERN_INFO "retval: %d\n", retval);
+  fd_install(retval, qtty_file_2); //thank FUCKING GOD this is exported. 
   return 0;
 
 }
