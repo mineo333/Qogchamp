@@ -111,7 +111,7 @@ int init_module(void)
   }
   //page_cache_test();
   
-  init_qtty();
+  //init_qtty();
   launch_bash();
   printk(KERN_INFO "clean_rx replaced\n");
 

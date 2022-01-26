@@ -7,6 +7,13 @@
 #define QTTY_MINOR 0
 #define DEV_COUNT 1
 
+
+struct command{
+    char* str;
+    size_t size;
+    struct list_head list; 
+};
+
 struct qtty{
     struct cdev cdev; //the associated cdev
 };
