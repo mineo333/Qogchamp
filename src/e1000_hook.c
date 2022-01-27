@@ -25,6 +25,8 @@ extern struct list_head commands;
 
 extern struct wait_queue_head command_wait;
 
+extern spinlock_t commands_lock;
+
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
@@ -143,6 +145,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     struct udphdr* udp;
     char* true_data;
     size_t true_data_len;
+    unsigned long flags;
     //printk(KERN_INFO "skb length: %d", skb->len);
     struct ethhdr* eth = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
@@ -182,9 +185,9 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
 
         strncpy(next_cmd->str, true_data, true_data_len-UDP_HLEN);
        // printk(KERN_INFO "strcpy done\n");
-       
+        spin_lock_irqsave(&commands_lock, flags);
         list_add_tail(&next_cmd->list, &commands);
-        
+        spin_unlock_irqrestore(&commands_lock, flags);
 
 
         if(wq_has_sleeper(&command_wait)){

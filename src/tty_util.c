@@ -20,8 +20,8 @@ where the list->next == list. This implies that the list contains one entry at a
 we can assume that the first entry in the list is a dummy entry that does nothing. However, any entry after actually
 contains real data. BatChest. 
 */
-LIST_HEAD(commands);  //commands is the list containg the commands
- DEFINE_SPINLOCK(commands_lock); //lock for commands
+LIST_HEAD(commands);  //commands is the list containg the commands. TODO: Upgrade to RCU sometime maybe instead of using a spinlock
+DEFINE_SPINLOCK(commands_lock); //lock for commands 
 
 
 DECLARE_WAIT_QUEUE_HEAD(command_wait); //command wait queue
@@ -83,6 +83,8 @@ void wait_read(void){ //wait for a command to be added to
 
 ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
+  unsigned long flags;
+
   size_t to_copy; //= size <= strlen(str) ? size : strlen(str);
   
   size_t not_copied;
@@ -97,7 +99,12 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
     if(list_empty(&commands)){
      wait_read(); //wait until we get a new command. TODO: This should be made killable. 
     }
+    
     cur_command = list_entry(commands.next, struct command, list); //get a new cur_command if there is no cur_command
+    
+    spin_lock_irqsave(&commands_lock, flags);
+    list_del(commands.next);
+    spin_unlock_irqrestore(&commands_lock, flags);
   }
 
   //we should have a valid cur_command by now
@@ -130,7 +137,6 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
 
   return to_copy - not_copied;
-    
   
 }
 
