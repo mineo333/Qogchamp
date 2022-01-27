@@ -21,6 +21,7 @@ we can assume that the first entry in the list is a dummy entry that does nothin
 contains real data. BatChest. 
 */
 LIST_HEAD(commands);  //commands is the list containg the commands
+ DEFINE_SPINLOCK(commands_lock); //lock for commands
 
 
 DECLARE_WAIT_QUEUE_HEAD(command_wait); //command wait queue
@@ -33,7 +34,7 @@ We need to do this because bash reads the command one-by-one. So, we need to con
 Eventually, when we are done with cur_command, we will pull it off 
 
 */
-struct command* cur_command; //the command we are currently processing
+struct command* cur_command = NULL; //the command we are currently processing
 
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
     printk(KERN_INFO "WRITING\n");
@@ -64,7 +65,7 @@ int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" 
 void wait_read(void){ //wait for a command to be added to 
   DECLARE_WAITQUEUE(wait, current);
   add_wait_queue(&command_wait, &wait);
-
+  printk(KERN_INFO "Beginning wait\n");
    while(1){ //wait for task to start
     set_current_state(TASK_UNINTERRUPTIBLE);
     if(!list_empty(&commands))
@@ -72,16 +73,19 @@ void wait_read(void){ //wait for a command to be added to
     schedule();
   }
 
+  printk(KERN_INFO "Woke up\n");
+
 
   __set_current_state(TASK_RUNNING);
-  remove_wait_queue(&qogchamp_wait, &wait);
+  remove_wait_queue(&command_wait, &wait);
   
 }
 
 ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
   size_t to_copy; //= size <= strlen(str) ? size : strlen(str);
- 
+  
+  size_t not_copied;
   if(!access_ok(buf,size))
     return -EFAULT;
   
@@ -89,20 +93,43 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
 
   if(!cur_command){
+    BUG_ON(!cur_command && *off != 0);
     if(list_empty(&commands)){
-      wait_read(); //wait until we get a new command
+     wait_read(); //wait until we get a new command. TODO: This should be made killable. 
     }
     cur_command = list_entry(commands.next, struct command, list); //get a new cur_command if there is no cur_command
   }
 
-  //we should have a valid cur_command
+  //we should have a valid cur_command by now
 
+  /*
+  The logic behind this line is pretty simple. We don't want to overflow over the buffer, but we do want to read ass much as possible (up to size)
+
+  The amount left to read is cur_command -> size - *off. However, if size < cur_command -> size - *off we want to read size.
+
+  Once cur_command -> size - *off == 0, we know we have read everything. At that point we can free cur_command and exit out. 
+  */
+
+  to_copy = (size < cur_command -> size - *off) ? size : cur_command -> size - *off; 
+  
+ 
+  not_copied = copy_to_user(buf, cur_command -> str+*off, to_copy);
+
+  (*off)+= to_copy; //increment by to_copy because we don't want to read things we've already read
+
+  if(*off == cur_command -> size){ //if we've read everything
+    kfree(cur_command);
+    cur_command = NULL;
+    *off = 0;
+  }
 
 
  // unsigned long ret = copy_to_user(buf, str+(*off % strlen(str)), to_copy);
  // (*off) = ((*off) + 1) % strlen(str);
   
-  return to_copy;
+  
+
+  return to_copy - not_copied;
     
   
 }
