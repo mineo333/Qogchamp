@@ -105,10 +105,7 @@ int init_module(void)
   
   WRITE_ONCE(e1000->clean_rx, e1000_clean_rx_irq); 
 
-  
-  if(sizeof(struct ethhdr) == ETH_HLEN){
-    printk(KERN_INFO "SAME\n");
-  }
+
   //page_cache_test();
   
   //init_qtty();

