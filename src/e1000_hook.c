@@ -38,7 +38,7 @@ struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
 }
 
 
-struct sk_buff* construct_skb(char* data, size_t* len){ //
+struct sk_buff* construct_skb(char* data, unsigned int* len){ //
     struct ethhdr eth;  
     struct iphdr ip;
     struct udphdr udp;
@@ -216,7 +216,6 @@ bool e1000_tbi_should_accept(struct e1000_adapter *adapter, u8 status, u8 errors
 
 void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, struct sk_buff *skb)
 {
-    int i;
     struct iphdr* ip;
     struct udphdr* udp;
     char* true_data;

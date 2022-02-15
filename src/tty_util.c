@@ -64,21 +64,36 @@ int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" 
 }
 
 
-void wait_read(void){ //wait for a command to be added to 
+void wait_read(void){ //wait for a command to be added to
+
+  unsigned long flags;
+  unsigned int state = TASK_KILLABLE;
   DECLARE_WAITQUEUE(wait, current);
   add_wait_queue(&command_wait, &wait);
   printk(KERN_INFO "Beginning wait\n");
+  
    while(1){ //wait for task to start
-    set_current_state(TASK_UNINTERRUPTIBLE);
-    if(!list_empty(&commands))
+    set_current_state(state);
+    if(signal_pending_state(state, current))
+      return;
+    
+    spin_lock_irqsave(&commands_lock, flags);
+   
+    if(!list_empty(&commands)){
+      spin_unlock_irqrestore(&commands_lock, flags); //don't forget to unlock before leaving!
       break;
+    }
+    spin_unlock_irqrestore(&commands_lock, flags);
     schedule();
+    
+    
   }
+  
 
   printk(KERN_INFO "Woke up\n");
 
 
-  __set_current_state(TASK_RUNNING);
+  set_current_state(TASK_RUNNING);
   remove_wait_queue(&command_wait, &wait);
   
 }
@@ -101,10 +116,18 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
     if(list_empty(&commands)){
      wait_read(); //wait until we get a new command. TODO: This should be made killable. 
     }
+
+
+    spin_lock_irqsave(&commands_lock, flags);
+
+    if(list_empty(&commands)){ //if the list is still empty we probably got killed, return.
+      return -EINTR;
+    }
+
     
     cur_command = list_entry(commands.next, struct command, list); //get a new cur_command if there is no cur_command
     
-    spin_lock_irqsave(&commands_lock, flags);
+    
     list_del(commands.next);
     spin_unlock_irqrestore(&commands_lock, flags);
   }
