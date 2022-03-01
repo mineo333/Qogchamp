@@ -126,14 +126,6 @@ int force_writeback(struct inode* inode){
   return ret;
 }
 
-void fuckery(struct inode* i, unsigned long bs_off){ //testing ground
-  struct page* old_page = find_page_inode(i, bs_off);
-  lock_page(old_page);
-  printk("Old page ref: %d\n", page_ref_count(old_page)); 
-  unlock_page(old_page);
-  //printk("New page ref: %d\n", page_ref_count(new_page));
-}
-
 /*
 bs_off is the number of bytes into the page cache
 
@@ -175,6 +167,8 @@ void write_string_page_cache(struct inode* i, unsigned long bs_off, const char* 
   replace_page(*old_page, *new_page); //do page replacement
 
 }
+
+
 
 /*
 

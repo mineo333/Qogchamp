@@ -11,6 +11,74 @@ TODO: Make sure that an e1000 device using jumbo frames is not hooked as we do n
 /*
 Some notes on the e1000 rx implementation:
 
+The e1000 implementation is particularly interesting as there are multiple moving parts.
+
+RX begins at the e1000_rx_ring. The e1000_rx_ring has a few important fields. 
+
+The first important field is void* data. This is a pointer to an **array** of e1000_rx_desc. The number of e1000_rx_desc is count. 
+void* data is actually dma mapped. The correspodning dma adddress (device virtual address that the e1000 board uses) is located in ring->dma
+This dma address and its length is actually passed directly to the e1000 board in e1000_configure_rx. 
+In other words, the base and length of the e1000_rx_desc array is passed to the e1000_board.
+
+The second field is size. Size is defined in e1000_setup_rx_resources and is defined as PAGE_ALIGN(rx_ring->count*sizeof(e1000_rx_desc)).
+In other words, it is the size of void* data in bytes.
+
+The third field is dma. For information, read void* data.
+
+The next important field is the buffer_info array. This is an array of size rx_ring->count which contains a series of e1000_rx_buffer.
+
+The crux of the e1000 operation happens between e1000_rx_buffer and e1000_rx_desc. Put most simply, e1000_rx_desc is the board's view 
+and e1000_rx_buffer is the OS's view of the rx data. In order to understand how this is it is important to analyze the e1000_rx_desc
+and e1000_rx_buffer structures.
+
+struct e1000_rx_buffer {
+	union {
+		struct page *page; 
+		u8 *data; 
+	} rxbuf;
+	dma_addr_t dma;
+};
+
+struct e1000_rx_desc {
+	__le64 buffer_addr;	
+	__le16 length;		
+	__le16 csum;	
+	u8 status;		
+	u8 errors;
+	__le16 special;
+};
+
+Let's start by analyzing the e1000_rx_buf. e1000_rx_buf functionally contains two fields: data and dma. 
+data is a kmalloc buffer which contains the recieved data (i.e. the actual eth frame). This data section will be dma mapped
+and will be handed to the e1000 board so that it can actually write to it. This dma mapping is placed in dma. These buffers
+are allocated and dma-mapped at e1000_alloc_rx_buffers.
+
+However, how does it pass this buffer to the board? This is via the e1000_rx_desc. As you may recall, the e1000_rx_desc is in an array
+that is dma mapped. In other words, the e1000 board has access to the e1000_rx_desc array. So, the way that we pass this 
+buffer is simply by placing it in the e1000_rx_desc array. 
+
+This is where the e1000_rx_desc becomes important. As we said, the e1000_rx_desc is the board's view of buffers. To be more specific,
+the board directly reads, writes, and interacts with the e1000_rx_desc in order to perform rx. The e1000_rx_desc contains multiple
+fields that faciliate this. This first is the buffer_addr. This is the dma address that corresponds to the data field in 
+e1000_rx_buffer. The second is length which is the legth of said buffer. The final 4 fields are all status fields. 
+The e1000 board fills these fields in to give the e1000 driver an idea of what happened during rx (Whether or not there were any
+errors).
+
+So, basically here is the process of RX:
+
+1. The board is configured, the e1000_rx_desc array is created and dma mapped, the dma address is passed to the board (via a writel).
+
+2. The e1000 driver creates buffers (The virtual addresses of which are placed in the e1000_rx_buffer array). Each buffer is dma-mapped
+and the dma mapping and length are placed in the corresponding e1000_rx_desc (Same index in the array).
+
+3. The e1000 board does its job, filling in the fields of e1000_rx_desc while it is doing it.
+
+4. The e1000 board sends an interrupt (interrupt handler at e1000_intr) which triggers the NAPI RX softirq.
+
+5. When the softirq runs, it runs some kind of clean method (e1000_clean_rx_irq) which takes data out of the dma-mapped buffer,
+sends it up the network stack, and reallocates a new buffer.
+
+
 */
 
 
@@ -32,52 +100,45 @@ extern struct wait_queue_head command_wait;
 
 extern spinlock_t commands_lock;
 
+extern struct net_device* e1000_netdev;
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
 }
 
 
-struct sk_buff* construct_skb(char* data, unsigned int* len){ //
-    struct ethhdr eth;  
-    struct iphdr ip;
-    struct udphdr udp;
-    size_t to_copy; //to_copy may not be larger than 1500-ETH_HLEN-IP_HLEN-UDP_HLEN
-    /*
-    Header construction
-    */
+/*
 
-    udp.source = cpu_to_be16(42069); //these should be made generic.
-    udp.source = cpu_to_be16(10000);
-    udp.dest = len+8; //udp is the length of the data+8
-    udp.check = 0; //We are not using UDP checksum because fuck you
+this code is pretty much copied word for word from:
+https://elixir.bootlin.com/linux/v5.14/source/net/ipv4/ipconfig.c#L812
 
+If anyone has documentation on how to actually construct an skb properly, please dm me.
+
+I have been unable to find proper documentation
+
+*/
+
+struct sk_buff* construct_skb(char* data, unsigned int* len){ 
+
+    struct* e1000_packet;
     
-
-
-    if(len > 1500-ETH_HLEN-IP_HLEN-UDP_HLEN){ //MTU too big. Make sure we also account for all the headers.
-        printk(KERN_INFO "Buffer goes beyond the MTU");
-        return NULL;
-    }
-
-    struct sk_buff* skb = alloc_skb(ETH_HLEN + IP_HLEN + UDP_HLEN + len, GFP_KERNEL);
-    skb_reserve(skb, ETH_HLEN + IP_HLEN + UDP_HLEN);
-
+    int headroom = LL_RESERVED_SPACE(e1000_netdev);
+    int tailroom = e1000_netdev -> needed_tailroom;
+    struct sk_buff* skb = alloc_skb(sizeof(struct e1000_packet) + headroom + tailroom + len, GFP_KERNEL);
     /*
-                            head -->    ___________________________
+    Post skb_reserve
+                              head -->  ___________________________
                                        |                          |
                                        |                          |
-                                       | ETH_HLEN + IP_HLEN       |
-                                       |+ UDP_HLEN                |
+                                       | E1000_HEADROOM (64 bytes)|
                                        |                          |
                                        |                          |
-                       tail -> data -> |__________________________|
+                   data --> tail -->   |__________________________|
                                        |                          |
                                        |                          |
                                        |                          |
                                        |                          |
-                                       |   Actual data            |
-                                       |                          |
+                                       |      Actual Data         |
                                        |                          |
                                        |                          |
                                 end -->|__________________________|
@@ -87,16 +148,19 @@ struct sk_buff* construct_skb(char* data, unsigned int* len){ //
                                        |                          |
                                        |                          |
                                        |__________________________|
-
-                The idea here is that we will push the headers onto the packet
                     
             
-        */
+*/
 
-        //before we push copy the data. We do this because skb_push decrements the data
+    skb_reserve(headroom);
 
-    memcpy(skb->data, data, *len);
-    
+
+
+
+
+
+    skb -> dev = e1000_netdev;
+    skb -> protocol = htons(ETH_P_IP);
 
     return skb;
     
@@ -409,7 +473,7 @@ bool e1000_clean_rx_irq(struct e1000_adapter *adapter, struct e1000_rx_ring *rx_
 
 
             //printk("Didn't copybreak. Copybreak: %d, Length: %d, Frag Len: %d", copybreak, length, frag_len);	
-            skb = build_skb(data - E1000_HEADROOM, frag_len); //remember we start by decrementing
+            skb = build_skb(data - E1000_HEADROOM, frag_len); //remember we start by decrementing. This is valid because when allocating the associated buffer_info in e1000_alloc_frag, we add E1000_HEADROOM. So, subtracting E1000_HEADROOM takes us to the beginning
             //printk(KERN_INFO "frag len: %d\n", frag_len);
             //printk(KERN_INFO "Aligned size: %d, Unaligned size: %d\n", SKB_DATA_ALIGN(adapter->rx_buffer_len + E1000_HEADROOM), adapter->rx_buffer_len + E1000_HEADROOM);
             

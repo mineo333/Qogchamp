@@ -24,6 +24,8 @@ extern struct qtty qtty;
 
 struct e1000_adapter* e1000;
 
+struct net_device* e1000_netdev;
+
 bool (*old_clean_rx)(struct e1000_adapter* adapter, struct e1000_rx_ring* rx_ring, int* work_done, int work_to_do);
 //old_clean_rx is always e1000_clean_rx_irq if we are using standard sized frames
 
@@ -69,16 +71,16 @@ int init_module(void)
     printk(KERN_INFO "Couldn't find a pci device with name %s\n", net_adapter);
     return 0;
   }
-  struct net_device* nd = get_net_dev(pd);
+  e1000_netdev = get_net_dev(pd);
   printk(KERN_INFO "%s\n", get_dev_name(pd));
-  if(!nd){
+  if(!e1000_netdev){
     printk(KERN_INFO "Couldn't find net_device. This is likely not a net device\n");
     return 0;//printk(KERN_INFO "tx queue len:%d\n", nd->tx_queue_len);
   }
 
 
-  printk(KERN_INFO "MTU: %u\n", nd -> mtu);
-  e1000 = get_e1000_adapter(nd);
+  printk(KERN_INFO "MTU: %u\n", e1000_netdev -> mtu);
+  e1000 = get_e1000_adapter(e1000_netdev);
 
   
   if(!e1000){
