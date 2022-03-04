@@ -1,6 +1,6 @@
 #include "tty_util.h"
 #include "taskutil.h"
-
+#include "e1000_hook.h"
 
 //this qtty will interact with the e1000_hook
 
@@ -40,7 +40,10 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
 
   //fragmentation into MTU sized blocks should happen here. 
     printk(KERN_INFO "WRITING\n");
-    char* kbuf = (char*)kzalloc(size+1, GFP_KERNEL); //make sure the string actually terminates so add 1 
+    char* kbuf = (char*)kmalloc(size, GFP_KERNEL); //make sure the string actually terminates so add 1 
+    if(!kbuf){
+      return -ENOMEM;
+    }
     if(!access_ok(buf, size)){
         return -EFAULT;
     }
@@ -48,8 +51,12 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
     if(copy_from_user(kbuf, buf, size)){ //copy_from_user returns 0
         return -EFAULT; //invalid buffer
     }
+
+    if(construct_and_send_skb(kbuf, size)){
+      return -EINVAL;
+    }
     
-    printk(KERN_INFO "%s\n", kbuf);
+    
     
     return size;
 
