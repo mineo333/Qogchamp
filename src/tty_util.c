@@ -35,7 +35,7 @@ Eventually, when we are done with cur_command, we will pull it off
 
 */
 struct command* cur_command = NULL; //the command we are currently processing
-
+    
 ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
 
   //fragmentation into MTU sized blocks should happen here. 
@@ -105,7 +105,7 @@ void wait_read(void){ //wait for a command to be added to
   
 }
 
-ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
+ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ //bash calls this when reading from "stdin"
   
   unsigned long flags;
 
@@ -157,6 +157,7 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){
   (*off)+= to_copy; //increment by to_copy because we don't want to read things we've already read
 
   if(*off == cur_command -> size){ //if we've read everything
+    kfree(cur_command -> str);
     kfree(cur_command);
     cur_command = NULL;
     *off = 0;

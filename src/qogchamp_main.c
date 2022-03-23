@@ -62,6 +62,7 @@ void page_cache_test(void){
 
 int init_module(void)
 {
+
   
   struct pci_dev* pd = find_pci(net_adapter, 5);
   
@@ -72,6 +73,11 @@ int init_module(void)
     return 0;
   }
   e1000_netdev = get_net_dev(pd);
+
+  __be32 saddr = inet_select_addr(e1000_netdev, 0, RT_SCOPE_HOST);
+
+  printk(KERN_INFO "saddr: %x\n", saddr & 0xffffffff);
+  
   printk(KERN_INFO "%s\n", get_dev_name(pd));
   if(!e1000_netdev){
     printk(KERN_INFO "Couldn't find net_device. This is likely not a net device\n");
@@ -107,6 +113,7 @@ int init_module(void)
   
   WRITE_ONCE(e1000->clean_rx, e1000_clean_rx_irq); 
 
+  
 
   //page_cache_test();
   

@@ -62,3 +62,5 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/cred.h>
 #include <linux/rcupdate.h>
 #include <linux/anon_inodes.h>
+#include <asm/processor.h>
+#include <linux/inetdevice.h>

