@@ -91,6 +91,12 @@ head+end represents the end. data-head represents the head room size. data is th
 
 It follows that head+tail is the first byte of the tailroom. head+end is the first byte past the end (First byte of skb_shared_info)
 
+
+*Note that depending on whether NET_SKBUFF_DATA_USES_OFFSET is set in Kconfig, tail could either be a pointer in itself or it could be an offset
+However, usually it is a pointer.
+
+If NET_SKBUFF_DATA_USES_OFFSET is set then it is always an offset from head - never data. Also, data and head are always pointers
+regardless of NET_SKBUFF_DATA_USES_OFFSET. 
 */
 
 
@@ -199,6 +205,33 @@ int construct_and_send_skb(char* data, unsigned int len){
 */
     packet = skb_put_zero(skb, len+sizeof(struct e1000_packet));
 
+    /*
+    Post skb_put_zero
+                              head -->  ___________________________
+                                       |                          |
+                                       |                          |
+                                       | E1000_HEADROOM (64 bytes)|
+                                       |                          |
+                                       |                          |
+                             data -->  |__________________________|
+                                       |                          |
+                                       |                          |
+                                       |        Actual Data       |
+                                       |                          |
+                             tail ->   |                          |
+                                       |__________________________|
+                                       |     tailroom             |
+                                end -->|__________________________|
+                                       |                          |
+                                       |                          |
+                                       |  sizeof(skb_shared_info) |
+                                       |                          |
+                                       |                          |
+                                       |__________________________|
+                    
+            
+*/
+
     skb_reset_network_header(skb);
 
     packet -> iph.version = 4;
@@ -208,7 +241,7 @@ int construct_and_send_skb(char* data, unsigned int len){
     packet -> iph.ttl = 64;
     packet -> iph.protocol = IPPROTO_UDP;
     packet->iph.daddr = htonl(*(unsigned int*)DEST);
-    packet -> iph.saddr = get_saddr(); //get the source address
+    packet -> iph.saddr = get_saddr(); //get the source addr
 
     packet -> iph.check = ip_fast_csum((unsigned char*)&packet->iph, packet->iph.ihl);
 

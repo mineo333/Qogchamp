@@ -20,8 +20,8 @@ where the list->next == list. This implies that the list contains one entry at a
 we can assume that the first entry in the list is a dummy entry that does nothing. However, any entry after actually
 contains real data. BatChest. 
 */
-LIST_HEAD(commands);  //commands is the list containg the commands. TODO: Upgrade to RCU sometime maybe instead of using a spinlock
-DEFINE_SPINLOCK(commands_lock); //lock for commands 
+LIST_HEAD(commands);  //commands is the list containg the commands.
+DEFINE_SPINLOCK(commands_lock); //this look prevents the whole commands structure. Take before modifying/checking commands. 
 
 
 DECLARE_WAIT_QUEUE_HEAD(command_wait); //command wait queue
@@ -90,8 +90,8 @@ void wait_read(void){ //wait for a command to be added to
       spin_unlock_irqrestore(&commands_lock, flags); //don't forget to unlock before leaving!
       break;
     }
-    spin_unlock_irqrestore(&commands_lock, flags);
-    schedule();
+    spin_unlock_irqrestore(&commands_lock, flags); //unlock, list is not empty yet
+    schedule(); //reschedule 
     
     
   }
@@ -109,7 +109,7 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ /
   
   unsigned long flags;
 
-  size_t to_copy; //= size <= strlen(str) ? size : strlen(str);
+  size_t to_copy; 
   
   size_t not_copied;
   if(!access_ok(buf,size))
@@ -121,8 +121,7 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ /
   if(!cur_command){
     BUG_ON(!cur_command && *off != 0); //it should never happen that we have a nonzero offset while cur_command is 0
     if(list_empty(&commands)){
-     wait_read(); //wait until we get a new command. TODO: This should be made killable. 
-    }
+     wait_read(); //wait until we get a new command. 
 
 
     spin_lock_irqsave(&commands_lock, flags);
@@ -154,22 +153,20 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ /
  
   not_copied = copy_to_user(buf, cur_command -> str+*off, to_copy);
 
-  (*off)+= to_copy; //increment by to_copy because we don't want to read things we've already read
+  (*off)+= (to_copy-not_copied); //increment by to_copy because we don't want to read things we've already read
 
   if(*off == cur_command -> size){ //if we've read everything
-    kfree(cur_command -> str);
-    kfree(cur_command);
-    cur_command = NULL;
-    *off = 0;
+    kfree(cur_command -> str); //free string before command
+    kfree(cur_command); //free command
+    cur_command = NULL; //set command to NULL to prevent UAF
+    *off = 0; //set offset to NULL. 
   }
 
 
- // unsigned long ret = copy_to_user(buf, str+(*off % strlen(str)), to_copy);
- // (*off) = ((*off) + 1) % strlen(str);
   
   
 
-  return to_copy - not_copied;
+  return to_copy - not_copied; 
   
 }
 
