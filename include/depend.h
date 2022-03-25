@@ -64,3 +64,9 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/anon_inodes.h>
 #include <asm/processor.h>
 #include <linux/inetdevice.h>
+#include <uapi/linux/in.h>
+#include <net/flow.h>
+#include <net/net_namespace.h>
+#include <linux/nsproxy.h>
+#include <net/l3mdev.h>
+#include <net/route.h>

