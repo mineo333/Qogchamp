@@ -209,6 +209,10 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
 
     __be32 saddr = get_saddr();
 
+    struct neighbour* neigh; //an EU guy made this so we use neighboUr instead of neighbor like sane human beings
+
+    bool is_v6gw = false;
+
 
     if(!bash_net_ns){ //if it doesn't exist, get it
         if(!get_net_ns_bash()){ //if it still doesn't exist, we can't route it lol
@@ -216,6 +220,8 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
             return -1;
         }
     } 
+
+
     
 
 
@@ -322,7 +328,29 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
     //printk(KERN_INFO "flowi4_uid: %u flowi4_oif: %u\n", flow.flowi4_uid.val, flow.flowi4_oif);
 
     rt = ip_route_output_key_hash(bash_net_ns, &flow, skb);
-    if(rt){
+    skb_dst_set(skb, (struct dst_entry*)rt); //idk if this actually does anything, but ill do it to be safe
+
+    //the code below is copied from https://elixir.bootlin.com/linux/v5.14/source/net/ipv4/ip_output.c#L187
+    rcu_read_lock_bh(); //ig this code is not rcu safe in bottom half context. 
+    neigh = ip_neigh_for_gw(rt, skb, &is_v6gw);
+
+    if(!IS_ERR(neigh)){
+        int res;
+        sock_confirm_neigh(skb, neigh);
+
+        res = neigh_output(neigh, skb, is_v6gw);
+        printk(KERN_INFO "result: %d\n", res);
+
+        rcu_read_unlock_bh();
+        return res;
+        
+    }
+
+    rcu_read_unlock_bh();
+
+    return -1;
+
+    /*if(rt){
         printk(KERN_INFO "gateway: %x\n", rt -> rt_gw4);
     }else{
         printk(KERN_INFO "no gateway, routing failed\n");
@@ -338,7 +366,7 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
     if(dev_queue_xmit(skb) < 0 ){
         printk(KERN_INFO "Packet transmission failed\n");
         return -1;
-    }
+    }*/
 
 
 
@@ -358,7 +386,7 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
 
     
    
-    return 0;
+    
         
     
     

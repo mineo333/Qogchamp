@@ -70,3 +70,5 @@ This file contains all the system dependcies because I'm lazy and the project lo
 #include <linux/nsproxy.h>
 #include <net/l3mdev.h>
 #include <net/route.h>
+#include <linux/err.h>
+#include <net/sock.h>
