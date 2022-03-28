@@ -52,7 +52,7 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
 
       size_t to_write = size < WRITE_SIZE ? size : WRITE_SIZE;
       
-      char* kbuf = (char*)kmalloc(to_write, GFP_KERNEL); //make sure the string actually terminates so add 1 
+      char* kbuf = (char*)kmalloc(to_write, GFP_KERNEL); 
 
       
 
@@ -70,7 +70,7 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
         return -EINVAL;
       }
       kfree(kbuf);
-      *off += WRITE_SIZE;
+      *off += to_write;
       size -= to_write;
       
     }
