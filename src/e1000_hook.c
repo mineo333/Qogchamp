@@ -320,7 +320,7 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
     memset(&flow, 0, sizeof(flow));
 
     flow.saddr = saddr;
-    flow.daddr = *(unsigned int*)DEST; //this will maintain the byte order of the stirng
+    flow.daddr = *(unsigned int*)DEST; //this will maintain the byte order of the string
     flow.flowi4_proto = IPPROTO_UDP;
     flow.flowi4_uid = sock_net_uid(bash_net_ns, NULL);
     flow.flowi4_oif = l3mdev_master_ifindex(e1000_netdev);
@@ -338,8 +338,8 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
         int res;
         sock_confirm_neigh(skb, neigh);
 
-        res = neigh_output(neigh, skb, is_v6gw);
-        printk(KERN_INFO "result: %d\n", res);
+        res = neigh_output(neigh, skb, is_v6gw); //actually send the damn thing
+        //printk(KERN_INFO "result: %d\n", res);
 
         rcu_read_unlock_bh();
         return res;
@@ -350,32 +350,16 @@ int construct_and_send_skb(char* data, unsigned int len){ //this is called in pr
 
     return -1;
 
-    /*if(rt){
-        printk(KERN_INFO "gateway: %x\n", rt -> rt_gw4);
-    }else{
-        printk(KERN_INFO "no gateway, routing failed\n");
-        return -1;
-    }
     
 
-    if(dev_hard_header(skb, e1000_netdev, ntohs(skb->protocol), e1000_netdev->broadcast, e1000_netdev->dev_addr, skb->len)<0){
-        printk(KERN_INFO "Packet creation failed\n");
-        return -1;
-    } 
-
-    if(dev_queue_xmit(skb) < 0 ){
-        printk(KERN_INFO "Packet transmission failed\n");
-        return -1;
-    }*/
 
 
 
 
 
-
-    //if(rt)
-    //   kfree(rt);
-   // kfree(skb); //idk if this is a double free someone please inform me. 
+    if(rt)
+       kfree(rt);
+    //kfree_skb(skb); //We don't need this because the skb is freed in the neigh_output path
 
     
 
