@@ -1,0 +1,7 @@
+bin/*
+!bin/Kbuild
+*.ko
+.vscode
+Module.symvers
+.*
+src/.*

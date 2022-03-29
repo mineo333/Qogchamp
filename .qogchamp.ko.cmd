@@ -1,1 +1,0 @@
-cmd_/home/mineo333/Qogchamp/qogchamp.ko := ld -r -m elf_x86_64 --build-id=sha1  -T scripts/module.lds -o /home/mineo333/Qogchamp/qogchamp.ko /home/mineo333/Qogchamp/qogchamp.o /home/mineo333/Qogchamp/qogchamp.mod.o;  true

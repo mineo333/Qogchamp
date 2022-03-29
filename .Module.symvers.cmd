@@ -1,1 +1,0 @@
-cmd_/home/mineo333/Qogchamp/Module.symvers := sed 's/\.ko$$/\.o/' /home/mineo333/Qogchamp/modules.order | scripts/mod/modpost -m -a  -o /home/mineo333/Qogchamp/Module.symvers -e -i Module.symvers   -T -
