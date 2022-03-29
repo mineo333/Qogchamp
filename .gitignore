@@ -1,5 +1,0 @@
-*.ko
-.vscode
-Module.symvers
-.*
-src/.*
