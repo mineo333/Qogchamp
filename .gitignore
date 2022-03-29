@@ -1,7 +1,3 @@
-!bin/Kbuild
-!bin
-bin/*
-
 *.ko
 .vscode
 Module.symvers
