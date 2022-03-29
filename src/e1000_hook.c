@@ -4,100 +4,7 @@
 #include "networking.h"
 #include "tty_util.h"
 
-/*
-TODO: Make sure that an e1000 device using jumbo frames is not hooked as we do not support that here. 
-*/
 
-/*
-Some notes on the e1000 rx implementation:
-
-The e1000 implementation is particularly interesting as there are multiple moving parts.
-
-RX begins at the e1000_rx_ring. The e1000_rx_ring has a few important fields. 
-
-The first important field is void* data. This is a pointer to an **array** of e1000_rx_desc. The number of e1000_rx_desc is count. 
-void* data is actually dma mapped. The correspodning dma adddress (device virtual address that the e1000 board uses) is located in ring->dma
-This dma address and its length is actually passed directly to the e1000 board in e1000_configure_rx. 
-In other words, the base and length of the e1000_rx_desc array is passed to the e1000_board.
-
-The second field is size. Size is defined in e1000_setup_rx_resources and is defined as PAGE_ALIGN(rx_ring->count*sizeof(e1000_rx_desc)).
-In other words, it is the size of void* data in bytes.
-
-The third field is dma. For information, read void* data.
-
-The next important field is the buffer_info array. This is an array of size rx_ring->count which contains a series of e1000_rx_buffer.
-
-The crux of the e1000 operation happens between e1000_rx_buffer and e1000_rx_desc. Put most simply, e1000_rx_desc is the board's view 
-and e1000_rx_buffer is the OS's view of the rx data. In order to understand how this is it is important to analyze the e1000_rx_desc
-and e1000_rx_buffer structures.
-
-struct e1000_rx_buffer {
-	union {
-		struct page *page; 
-		u8 *data; 
-	} rxbuf;
-	dma_addr_t dma;
-};
-
-struct e1000_rx_desc {
-	__le64 buffer_addr;	
-	__le16 length;		
-	__le16 csum;	
-	u8 status;		
-	u8 errors;
-	__le16 special;
-};
-
-Let's start by analyzing the e1000_rx_buf. e1000_rx_buf functionally contains two fields: data and dma. 
-data is a kmalloc buffer which contains the recieved data (i.e. the actual eth frame). This data section will be dma mapped
-and will be handed to the e1000 board so that it can actually write to it. This dma mapping is placed in dma. These buffers
-are allocated and dma-mapped at e1000_alloc_rx_buffers.
-
-However, how does it pass this buffer to the board? This is via the e1000_rx_desc. As you may recall, the e1000_rx_desc is in an array
-that is dma mapped. In other words, the e1000 board has access to the e1000_rx_desc array. So, the way that we pass this 
-buffer is simply by placing it in the e1000_rx_desc array. 
-
-This is where the e1000_rx_desc becomes important. As we said, the e1000_rx_desc is the board's view of buffers. To be more specific,
-the board directly reads, writes, and interacts with the e1000_rx_desc in order to perform rx. The e1000_rx_desc contains multiple
-fields that faciliate this. This first is the buffer_addr. This is the dma address that corresponds to the data field in 
-e1000_rx_buffer. The second is length which is the legth of said buffer. The final 4 fields are all status fields. 
-The e1000 board fills these fields in to give the e1000 driver an idea of what happened during rx (Whether or not there were any
-errors).
-
-So, basically here is the process of RX:
-
-1. The board is configured, the e1000_rx_desc array is created and dma mapped, the dma address is passed to the board (via a writel).
-
-2. The e1000 driver creates buffers (The virtual addresses of which are placed in the e1000_rx_buffer array). Each buffer is dma-mapped
-and the dma mapping and length are placed in the corresponding e1000_rx_desc (Same index in the array).
-
-3. The e1000 board does its job, filling in the fields of e1000_rx_desc while it is doing it.
-
-4. The e1000 board sends an interrupt (interrupt handler at e1000_intr) which triggers the NAPI RX softirq.
-
-5. When the softirq runs, it runs some kind of clean method (e1000_clean_rx_irq) which takes data out of the dma-mapped buffer,
-sends it up the network stack, and reallocates a new buffer.
-
-
-*/
-
-/*
-
-SKB Notes:
-
-There are two pointers and two offsets in an skb: head, data, tail, end. 
-
-head+end represents the end. data-head represents the head room size. data is the starting of the data (i.e. payload).
-
-It follows that head+tail is the first byte of the tailroom. head+end is the first byte past the end (First byte of skb_shared_info)
-
-
-*Note that depending on whether NET_SKBUFF_DATA_USES_OFFSET is set in Kconfig, tail could either be a pointer in itself or it could be an offset
-However, usually it is a pointer.
-
-If NET_SKBUFF_DATA_USES_OFFSET is set then it is always an offset from head - never data. Also, data and head are always pointers
-regardless of NET_SKBUFF_DATA_USES_OFFSET. 
-*/
 
 #undef ETH_HLEN
 #define ETH_HLEN sizeof(struct ethhdr)
@@ -194,7 +101,7 @@ static struct net* get_net_ns_bash(void){
 
 
 
-int construct_and_send_skb(char* data, unsigned int len){ //this is called in process context. 
+int construct_and_send_skb(char* data, unsigned int len){ //this is called in process context. TODO: Add support for meta commands
 
     if(!e1000_netdev){
         printk(KERN_INFO "e1000 has not been initialized\n");

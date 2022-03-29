@@ -1,9 +1,0 @@
-Because networking is such a vast topic, I decided to take some notes on what I know about the Linux networking subsystem.
-
-In the Linux networking subsystem there is ONE key structure: the socket buffer or sk_buff (Often further shortened to skb). 
-The reason why it is the key structure is because it literally IS the packet. This structure is passed between the various layers
-of the OSI model is manipulated accordingly.
-
-Due to the vastness and diversity of networking standards, devices, and protocols you would expect the skb to be fucking massive. And,
-you would be right! It is probably one of the largest structures in the Linux Kernel (behind something like task_struct). 
-
