@@ -36,8 +36,23 @@ embedded in an rtable which we will discuss as we talk about routing.
 
 The last important field used in this rootkit is the skb->dev which contains the netdev that this packet will go out.
 
+For more details on how the SKB works and is constructed I recommend reading the e1000_hook.c code. Specifically construct_and_send_skb.
+
 Routing, FIB:
 _____________________________________________
+
+Routing is a pretty complex business in the Linux Kernel. The objective of this section is to attempt to understand exactly
+what we did with routing and why the functions we used work.
+
+We will specifically be discussing IPv4 host routing.
+
+In order to discuss routing it is first important to understand exactly how routing is performed. Anyone who has taken basic networking
+knows about administrative distance and metric. It is with these two metrics that a routing daemon gauges the reliability and
+usefulness of a route. 
+
+However, Linux does not have an administrative distance. This raises a question: what do you do with two routes that have the same metric? 
+For example, it is very possible that you can have a default route and an OSPF route with the same metric. However, obviously one is better 
+than the other. The answer is route specificity. 
 
 
 
@@ -46,9 +61,4 @@ _____________________________________________
 Neighbor Subsystem:
 _____________________________________________
 
-
-
-
-
-
-
+The Neighbor subsystem is the next essential component of networking. The neighbor subsystem attempts to 

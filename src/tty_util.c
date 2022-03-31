@@ -276,5 +276,7 @@ void launch_bash(void){
     schedule();
   }
   __set_current_state(TASK_RUNNING);
+  printk(KERN_INFO "%llx\n",bash_proc->mm->pgd);
+
   remove_wait_queue(&qogchamp_wait, &wait);
 }

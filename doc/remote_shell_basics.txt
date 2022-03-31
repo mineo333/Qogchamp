@@ -1,0 +1,2 @@
+The purpose of this document is to discuss the inner workings of the remote shell at a relatively high level.
+

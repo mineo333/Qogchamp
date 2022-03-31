@@ -15,6 +15,7 @@ In other words, it is the size of void* data in bytes.
 The third field is dma. For information, read void* data.
 
 The next important field is the buffer_info array. This is an array of size rx_ring->count which contains a series of e1000_rx_buffer.
+It is important to note that this buffer is allocated with vmalloc NOT kmalloc. 
 
 The crux of the e1000 operation happens between e1000_rx_buffer and e1000_rx_desc. Put most simply, e1000_rx_desc is the board's view 
 and e1000_rx_buffer is the OS's view of the rx data. In order to understand how this is it is important to analyze the e1000_rx_desc
